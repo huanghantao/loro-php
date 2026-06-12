@@ -41,7 +41,45 @@ under `native/<platform>-<arch>/`, for example
 `native/darwin-arm64/libloro_php.dylib`. The loader also checks `native/`
 directly as a fallback.
 
-## Usage
+## Classic Examples
+
+Run examples with FFI enabled:
+
+```bash
+php -d ffi.enable=1 example.php
+```
+
+### Edit text, maps, and lists
+
+```php
+<?php
+
+require __DIR__ . '/vendor/autoload.php';
+
+use Loro\Container;
+use Loro\Loro;
+use Loro\LoroDoc;
+
+$doc = new LoroDoc();
+
+$text = $doc->getText(Container::idLike('text'));
+$text->insert(0, 'Hello');
+$text->insert(5, ', Loro');
+
+$profile = $doc->getMap(Container::idLike('profile'));
+Container::insertMapValue($profile, 'name', 'Ada');
+Container::insertMapValue($profile, 'online', true);
+
+$todos = $doc->getList(Container::idLike('todos'));
+Container::pushListValue($todos, 'write docs');
+Container::pushListValue($todos, 'ship release');
+
+$doc->commit();
+
+print_r(Loro::toJson($doc));
+```
+
+### Sync two documents
 
 ```php
 <?php
@@ -51,14 +89,92 @@ require __DIR__ . '/vendor/autoload.php';
 use Loro\Container;
 use Loro\Export;
 use Loro\LoroDoc;
+use Loro\VersionVector;
+
+$alice = new LoroDoc();
+$alice->setPeerId(1);
+$aliceText = $alice->getText(Container::idLike('text'));
+$aliceText->insert(0, 'Hello');
+$alice->commit();
+
+$bob = new LoroDoc();
+$bob->setPeerId(2);
+$bob->import($alice->export(Export::updates(new VersionVector())));
+
+$bobText = $bob->getText(Container::idLike('text'));
+$bobText->insert($bobText->lenUnicode(), ' from Bob');
+$bob->commit();
+
+$alice->import($bob->export(Export::updates($alice->oplogVv())));
+
+echo $aliceText->slice(0, $aliceText->lenUnicode()); // Hello from Bob
+```
+
+### Rich text marks
+
+```php
+<?php
+
+require __DIR__ . '/vendor/autoload.php';
+
+use Loro\Container;
+use Loro\Loro;
+use Loro\LoroDoc;
 
 $doc = new LoroDoc();
-$text = $doc->getText(Container::idLike('text'));
+Loro::configureTextStyle($doc, ['bold' => 'after']);
 
-$text->insert(0, 'hello');
+$text = $doc->getText(Container::idLike('text'));
+$text->insert(0, 'Hello world');
+Container::markText($text, 0, 5, 'bold', true);
+
+print_r(Loro::textDeltaToPhp($text->toDelta()));
+```
+
+### Save and restore a snapshot
+
+```php
+<?php
+
+require __DIR__ . '/vendor/autoload.php';
+
+use Loro\Container;
+use Loro\Export;
+use Loro\Loro;
+use Loro\LoroDoc;
+
+$doc = new LoroDoc();
+$doc->getText(Container::idLike('text'))->insert(0, 'snapshot me');
 $doc->commit();
 
 $snapshot = $doc->export(Export::snapshot());
+
+$restored = new LoroDoc();
+$restored->import($snapshot);
+
+print_r(Loro::toJson($restored)); // ['text' => 'snapshot me']
+```
+
+### Share presence with Awareness
+
+```php
+<?php
+
+require __DIR__ . '/vendor/autoload.php';
+
+use Loro\Awareness;
+use Loro\AwarenessState;
+
+$alice = new Awareness(1, 30000);
+AwarenessState::setLocalState($alice, [
+    'name' => 'Alice',
+    'cursor' => 5,
+]);
+
+$bob = new Awareness(2, 30000);
+$bob->apply($alice->encodeAll());
+
+print_r(AwarenessState::getState($bob, 1));
 ```
 
 ## Local Development
