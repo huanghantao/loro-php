@@ -2527,17 +2527,31 @@ UNIFFI_CDEF;
         return $value;
     }
 
-    public static function lowerUInt64(int $value): int
+    public static function lowerUInt64(int|string $value): int|\FFI\CData
     {
-        if ($value < 0) {
-            throw new \RangeException('u64 requires a non-negative integer');
+        [$hi, $lo] = self::uint64Parts($value);
+        if ($hi <= 0x7fffffff) {
+            return $hi * 0x100000000 + $lo;
         }
-        return $value;
+
+        $u64 = self::ffi()->new('uint64_t');
+        \FFI::memcpy(\FFI::addr($u64), self::uint64NativeBytes($hi, $lo), 8);
+
+        return $u64;
     }
 
-    public static function liftUInt64(int $value): int
+    public static function liftUInt64(int $value): int|string
     {
-        return $value;
+        if ($value >= 0) {
+            return $value;
+        }
+
+        $bytes = pack('q', $value);
+        $parts = self::isLittleEndian()
+            ? unpack('Vlo/Vhi', $bytes)
+            : unpack('Nhi/Nlo', $bytes);
+
+        return self::uint64DecimalString($parts['hi'], $parts['lo']);
     }
 
     public static function lowerFloat32(float $value): float
@@ -2820,23 +2834,20 @@ UNIFFI_CDEF;
         self::writeUInt32($writer, $lo);
     }
 
-    public static function readUInt64(array &$reader): int
+    public static function readUInt64(array &$reader): int|string
     {
         $parts = unpack('Nhi/Nlo', self::readRawBytes($reader, 8));
-        $value = $parts['hi'] * 0x100000000 + $parts['lo'];
-        if (!is_int($value) || $value > PHP_INT_MAX) {
-            throw new \OverflowException('u64 value exceeds PHP integer range');
+
+        if ($parts['hi'] <= 0x7fffffff) {
+            return $parts['hi'] * 0x100000000 + $parts['lo'];
         }
-        return $value;
+
+        return self::uint64DecimalString($parts['hi'], $parts['lo']);
     }
 
-    public static function writeUInt64(array &$writer, int $value): void
+    public static function writeUInt64(array &$writer, int|string $value): void
     {
-        if ($value < 0) {
-            throw new \RangeException('u64 requires a non-negative integer');
-        }
-        $hi = intdiv($value, 0x100000000);
-        $lo = $value % 0x100000000;
+        [$hi, $lo] = self::uint64Parts($value);
         self::writeUInt32($writer, $hi);
         self::writeUInt32($writer, $lo);
     }
@@ -3093,6 +3104,78 @@ UNIFFI_CDEF;
         $target->capacity = $source->capacity;
         $target->len = $source->len;
         $target->data = $source->data;
+    }
+
+    private static function uint64Parts(int|string $value): array
+    {
+        if (is_int($value)) {
+            if ($value < 0) {
+                throw new \RangeException('u64 requires a non-negative integer');
+            }
+
+            return [intdiv($value, 0x100000000), $value % 0x100000000];
+        }
+
+        if (!preg_match('/^(0|[1-9][0-9]*)$/', $value)) {
+            throw new \RangeException('u64 string must be an unsigned decimal integer');
+        }
+
+        $hi = 0;
+        $lo = 0;
+        foreach (str_split($value) as $digit) {
+            $lo = $lo * 10 + (int) $digit;
+            $carry = intdiv($lo, 0x100000000);
+            $lo %= 0x100000000;
+            $hi = $hi * 10 + $carry;
+            if ($hi > 0xffffffff) {
+                throw new \RangeException('u64 string exceeds 18446744073709551615');
+            }
+        }
+
+        return [$hi, $lo];
+    }
+
+    private static function uint64DecimalString(int $hi, int $lo): string
+    {
+        $base = 1000000000;
+        $parts = [$lo % $base, intdiv($lo, $base)];
+        $carry = 0;
+        foreach ([294967296, 4] as $index => $part) {
+            $sum = ($parts[$index] ?? 0) + $part * $hi + $carry;
+            $parts[$index] = $sum % $base;
+            $carry = intdiv($sum, $base);
+        }
+        $index = 2;
+        while ($carry > 0) {
+            $sum = ($parts[$index] ?? 0) + $carry;
+            $parts[$index] = $sum % $base;
+            $carry = intdiv($sum, $base);
+            $index++;
+        }
+
+        while (count($parts) > 1 && end($parts) === 0) {
+            array_pop($parts);
+        }
+
+        $parts = array_reverse($parts);
+        $result = (string) array_shift($parts);
+        foreach ($parts as $part) {
+            $result .= str_pad((string) $part, 9, '0', STR_PAD_LEFT);
+        }
+
+        return $result;
+    }
+
+    private static function uint64NativeBytes(int $hi, int $lo): string
+    {
+        return self::isLittleEndian()
+            ? pack('V2', $lo, $hi)
+            : pack('N2', $hi, $lo);
+    }
+
+    private static function isLittleEndian(): bool
+    {
+        return pack('L', 1) === "\x01\x00\x00\x00";
     }
 
     private static function intInRange(int $value, int $min, int $max, string $type): int
@@ -3404,7 +3487,7 @@ final class EphemeralStoreEvent
 
 final class FirstCommitFromPeerPayload
 {
-    public function __construct(public int $peer) {}
+    public function __construct(public int|string $peer) {}
 
     public static function uniffiLift(\FFI\CData $buf): self
     {
@@ -3455,7 +3538,7 @@ final class FrontiersOrId
 
 final class Id
 {
-    public function __construct(public int $peer, public int $counter) {}
+    public function __construct(public int|string $peer, public int $counter) {}
 
     public static function uniffiLift(\FFI\CData $buf): self
     {
@@ -3481,7 +3564,7 @@ final class Id
 
 final class IdLp
 {
-    public function __construct(public int $lamport, public int $peer) {}
+    public function __construct(public int $lamport, public int|string $peer) {}
 
     public static function uniffiLift(\FFI\CData $buf): self
     {
@@ -3507,7 +3590,7 @@ final class IdLp
 
 final class IdSpan
 {
-    public function __construct(public int $peer, public CounterSpan $counter) {}
+    public function __construct(public int|string $peer, public CounterSpan $counter) {}
 
     public static function uniffiLift(\FFI\CData $buf): self
     {
@@ -3797,7 +3880,7 @@ final class TreeDiffItem
 
 final class TreeId
 {
-    public function __construct(public int $peer, public int $counter) {}
+    public function __construct(public int|string $peer, public int $counter) {}
 
     public static function uniffiLift(\FFI\CData $buf): self
     {
@@ -3875,7 +3958,7 @@ final class UpdateOptions
 
 final class VersionRangeItem
 {
-    public function __construct(public int $peer, public int $start, public int $end) {}
+    public function __construct(public int|string $peer, public int $start, public int $end) {}
 
     public static function uniffiLift(\FFI\CData $buf): self
     {
@@ -4042,7 +4125,7 @@ final class ContainerId
     {
         return new self('Root', ['name' => $name, 'containerType' => $containerType]);
     }
-    public static function normal(int $peer, int $counter, ContainerType $containerType): self
+    public static function normal(int|string $peer, int $counter, ContainerType $containerType): self
     {
         return new self('Normal', ['peer' => $peer, 'counter' => $counter, 'containerType' => $containerType]);
     }
@@ -6138,7 +6221,7 @@ function getVersion(): string
 final class Awareness
 {
     private mixed $handle = 0;
-    public function __construct(int $peer, int $timeout)
+    public function __construct(int|string $peer, int $timeout)
     {
         $this->handle = UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_constructor_awareness_new', UniFFIRuntime::lowerUInt64($peer), UniFFIRuntime::lowerInt64($timeout));
     }
@@ -6214,7 +6297,7 @@ final class Awareness
         $result = UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_method_awareness_get_local_state', $this->uniffiCloneHandle());
         return UniFFIRuntime::liftSerialized($result, ['optional', ['enum', 'LoroValue']]);
     }
-    public function peer(): int
+    public function peer(): int|string
     {
         $result = UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_method_awareness_peer', $this->uniffiCloneHandle());
         return UniFFIRuntime::liftUInt64($result);
@@ -7666,12 +7749,12 @@ final class LoroDoc
         $result = UniFFIRuntime::rustCallWithError('uniffi_loro_ffi_fn_method_lorodoc_jsonpath', ['enum', 'JsonPathError'], $this->uniffiCloneHandle(), UniFFIRuntime::lowerString($path));
         return UniFFIRuntime::liftSerialized($result, ['sequence', ['object', 'ValueOrContainer']]);
     }
-    public function lenChanges(): int
+    public function lenChanges(): int|string
     {
         $result = UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_method_lorodoc_len_changes', $this->uniffiCloneHandle());
         return UniFFIRuntime::liftUInt64($result);
     }
-    public function lenOps(): int
+    public function lenOps(): int|string
     {
         $result = UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_method_lorodoc_len_ops', $this->uniffiCloneHandle());
         return UniFFIRuntime::liftUInt64($result);
@@ -7691,7 +7774,7 @@ final class LoroDoc
         $result = UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_method_lorodoc_oplog_vv', $this->uniffiCloneHandle());
         return VersionVector::uniffiLift($result);
     }
-    public function peerId(): int
+    public function peerId(): int|string
     {
         $result = UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_method_lorodoc_peer_id', $this->uniffiCloneHandle());
         return UniFFIRuntime::liftUInt64($result);
@@ -7729,7 +7812,7 @@ final class LoroDoc
     {
         UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_method_lorodoc_set_next_commit_timestamp', $this->uniffiCloneHandle(), UniFFIRuntime::lowerInt64($timestamp));
     }
-    public function setPeerId(int $peer): void
+    public function setPeerId(int|string $peer): void
     {
         UniFFIRuntime::rustCallWithError('uniffi_loro_ffi_fn_method_lorodoc_set_peer_id', ['enum', 'LoroError'], $this->uniffiCloneHandle(), UniFFIRuntime::lowerUInt64($peer));
     }
@@ -8084,7 +8167,7 @@ final class LoroMap
         $result = UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_method_loromap_get_deep_value', $this->uniffiCloneHandle());
         return LoroValue::uniffiLift($result);
     }
-    public function getLastEditor(string $key): ?int
+    public function getLastEditor(string $key): int|string|null
     {
         $result = UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_method_loromap_get_last_editor', $this->uniffiCloneHandle(), UniFFIRuntime::lowerString($key));
         return UniFFIRuntime::liftSerialized($result, ['optional', 'u64']);
@@ -8278,7 +8361,7 @@ final class LoroMovableList
         $result = UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_method_loromovablelist_get_attached', $this->uniffiCloneHandle());
         return UniFFIRuntime::liftSerialized($result, ['optional', ['object', 'LoroMovableList']]);
     }
-    public function getCreatorAt(int $pos): ?int
+    public function getCreatorAt(int $pos): int|string|null
     {
         $result = UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_method_loromovablelist_get_creator_at', $this->uniffiCloneHandle(), UniFFIRuntime::lowerUInt32($pos));
         return UniFFIRuntime::liftSerialized($result, ['optional', 'u64']);
@@ -8293,12 +8376,12 @@ final class LoroMovableList
         $result = UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_method_loromovablelist_get_deep_value', $this->uniffiCloneHandle());
         return LoroValue::uniffiLift($result);
     }
-    public function getLastEditorAt(int $pos): ?int
+    public function getLastEditorAt(int $pos): int|string|null
     {
         $result = UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_method_loromovablelist_get_last_editor_at', $this->uniffiCloneHandle(), UniFFIRuntime::lowerUInt32($pos));
         return UniFFIRuntime::liftSerialized($result, ['optional', 'u64']);
     }
-    public function getLastMoverAt(int $pos): ?int
+    public function getLastMoverAt(int $pos): int|string|null
     {
         $result = UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_method_loromovablelist_get_last_mover_at', $this->uniffiCloneHandle(), UniFFIRuntime::lowerUInt32($pos));
         return UniFFIRuntime::liftSerialized($result, ['optional', 'u64']);
@@ -8522,7 +8605,7 @@ final class LoroText
         $result = UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_method_lorotext_get_cursor', $this->uniffiCloneHandle(), UniFFIRuntime::lowerUInt32($pos), Side::uniffiLower($side));
         return UniFFIRuntime::liftSerialized($result, ['optional', ['object', 'Cursor']]);
     }
-    public function getEditorAtUnicodePos(int $pos): ?int
+    public function getEditorAtUnicodePos(int $pos): int|string|null
     {
         $result = UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_method_lorotext_get_editor_at_unicode_pos', $this->uniffiCloneHandle(), UniFFIRuntime::lowerUInt32($pos));
         return UniFFIRuntime::liftSerialized($result, ['optional', 'u64']);
@@ -9438,7 +9521,7 @@ final class UndoManager
     {
         UniFFIRuntime::rustCallWithError('uniffi_loro_ffi_fn_method_undomanager_group_start', ['enum', 'LoroError'], $this->uniffiCloneHandle());
     }
-    public function peer(): int
+    public function peer(): int|string
     {
         $result = UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_method_undomanager_peer', $this->uniffiCloneHandle());
         return UniFFIRuntime::liftUInt64($result);
@@ -9768,7 +9851,7 @@ final class VersionRange
     {
         UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_method_versionrange_extends_to_include_id_span', $this->uniffiCloneHandle(), IdSpan::uniffiLower($span));
     }
-    public function get(int $peer): ?CounterSpan
+    public function get(int|string $peer): ?CounterSpan
     {
         $result = UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_method_versionrange_get', $this->uniffiCloneHandle(), UniFFIRuntime::lowerUInt64($peer));
         return UniFFIRuntime::liftSerialized($result, ['optional', ['record', 'CounterSpan']]);
@@ -9788,7 +9871,7 @@ final class VersionRange
         $result = UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_method_versionrange_has_overlap_with', $this->uniffiCloneHandle(), IdSpan::uniffiLower($span));
         return UniFFIRuntime::liftBool($result);
     }
-    public function insert(int $peer, int $start, int $end): void
+    public function insert(int|string $peer, int $start, int $end): void
     {
         UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_method_versionrange_insert', $this->uniffiCloneHandle(), UniFFIRuntime::lowerUInt64($peer), UniFFIRuntime::lowerInt32($start), UniFFIRuntime::lowerInt32($end));
     }
@@ -9878,7 +9961,7 @@ final class VersionVector
     {
         UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_method_versionvector_extend_to_include_vv', $this->uniffiCloneHandle(), VersionVector::uniffiLower($other));
     }
-    public function getLast(int $peer): ?int
+    public function getLast(int|string $peer): ?int
     {
         $result = UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_method_versionvector_get_last', $this->uniffiCloneHandle(), UniFFIRuntime::lowerUInt64($peer));
         return UniFFIRuntime::liftSerialized($result, ['optional', 'i32']);

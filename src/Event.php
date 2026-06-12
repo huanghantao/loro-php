@@ -34,6 +34,36 @@ final class LocalUpdateCallbackClosure extends LocalUpdateCallback
     }
 }
 
+final class FirstCommitFromPeerCallbackClosure extends FirstCommitFromPeerCallback
+{
+    private mixed $callback;
+
+    public function __construct(callable $callback)
+    {
+        $this->callback = $callback;
+    }
+
+    public function onFirstCommitFromPeer(FirstCommitFromPeerPayload $payload): void
+    {
+        ($this->callback)($payload);
+    }
+}
+
+final class PreCommitCallbackClosure extends PreCommitCallback
+{
+    private mixed $callback;
+
+    public function __construct(callable $callback)
+    {
+        $this->callback = $callback;
+    }
+
+    public function onPreCommit(PreCommitCallbackPayload $payload): void
+    {
+        ($this->callback)($payload);
+    }
+}
+
 final class JsonPathSubscriberCallback extends JsonPathSubscriber
 {
     private mixed $callback;
@@ -61,6 +91,16 @@ final class Events
         return new LocalUpdateCallbackClosure($callback);
     }
 
+    public static function firstCommitFromPeerCallback(callable $callback): FirstCommitFromPeerCallback
+    {
+        return new FirstCommitFromPeerCallbackClosure($callback);
+    }
+
+    public static function preCommitCallback(callable $callback): PreCommitCallback
+    {
+        return new PreCommitCallbackClosure($callback);
+    }
+
     public static function jsonPathSubscriber(callable $callback): JsonPathSubscriber
     {
         return new JsonPathSubscriberCallback($callback);
@@ -86,6 +126,16 @@ final class Events
     public static function subscribeLocalUpdate(LoroDoc $doc, callable $callback): Subscription
     {
         return $doc->subscribeLocalUpdate(new LocalUpdateCallbackClosure($callback));
+    }
+
+    public static function subscribeFirstCommitFromPeer(LoroDoc $doc, callable $callback): Subscription
+    {
+        return $doc->subscribeFirstCommitFromPeer(new FirstCommitFromPeerCallbackClosure($callback));
+    }
+
+    public static function subscribePreCommit(LoroDoc $doc, callable $callback): Subscription
+    {
+        return $doc->subscribePreCommit(new PreCommitCallbackClosure($callback));
     }
 
     public static function subscribeJsonpath(LoroDoc $doc, string $path, callable $callback): Subscription

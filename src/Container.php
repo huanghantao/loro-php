@@ -24,6 +24,39 @@ final class FixedContainerIdLike extends ContainerIdLike
     }
 }
 
+final class AwarenessState
+{
+    public static function setLocalState(Awareness $awareness, mixed $value): void
+    {
+        $awareness->setLocalState(Value::like($value));
+    }
+
+    public static function getLocalState(Awareness $awareness): mixed
+    {
+        $state = $awareness->getLocalState();
+
+        return $state === null ? null : Value::toPhp($state);
+    }
+
+    public static function getState(Awareness $awareness, int|string $peer): mixed
+    {
+        $states = $awareness->getAllStates();
+        $info = $states[$peer] ?? null;
+
+        return $info === null ? null : Value::toPhp($info->state);
+    }
+
+    public static function getAllStates(Awareness $awareness): array
+    {
+        $result = [];
+        foreach ($awareness->getAllStates() as $peer => $info) {
+            $result[$peer] = Value::toPhp($info->state);
+        }
+
+        return $result;
+    }
+}
+
 final class Container
 {
     public static function idLike(string|ContainerId|ContainerIdLike $id): ContainerIdLike
@@ -70,6 +103,8 @@ final class Container
 
     public static function insertMapContainer(LoroMap $map, string $key, object $child): object
     {
+        self::assertChildCanBeInserted($map->doc(), $child);
+
         return match (true) {
             $child instanceof LoroCounter => $map->insertCounterContainer($key, $child),
             $child instanceof LoroList => $map->insertListContainer($key, $child),
@@ -83,6 +118,8 @@ final class Container
 
     public static function getOrCreateMapContainer(LoroMap $map, string $key, object $child): object
     {
+        self::assertChildCanBeInserted($map->doc(), $child);
+
         return match (true) {
             $child instanceof LoroCounter => $map->getOrCreateCounterContainer($key, $child),
             $child instanceof LoroList => $map->getOrCreateListContainer($key, $child),
@@ -96,6 +133,8 @@ final class Container
 
     public static function insertListContainer(LoroList|LoroMovableList $list, int $pos, object $child): object
     {
+        self::assertChildCanBeInserted($list->doc(), $child);
+
         return match (true) {
             $child instanceof LoroCounter => $list->insertCounterContainer($pos, $child),
             $child instanceof LoroList => $list->insertListContainer($pos, $child),
@@ -114,6 +153,8 @@ final class Container
 
     public static function setMovableListContainer(LoroMovableList $list, int $pos, object $child): object
     {
+        self::assertChildCanBeInserted($list->doc(), $child);
+
         return match (true) {
             $child instanceof LoroCounter => $list->setCounterContainer($pos, $child),
             $child instanceof LoroList => $list->setListContainer($pos, $child),
@@ -150,5 +191,41 @@ final class Container
         throw new \InvalidArgumentException(
             'Expected a Loro container child, got ' . get_debug_type($child)
         );
+    }
+
+    private static function assertChildCanBeInserted(?LoroDoc $parentDoc, object $child): void
+    {
+        $childInfo = self::attachedChildInfo($child);
+        if ($childInfo === null) {
+            return;
+        }
+
+        [$childId, $childDoc] = $childInfo;
+        if (
+            $parentDoc !== null
+            && $childDoc !== null
+            && $parentDoc->peerId() === $childDoc->peerId()
+            && $parentDoc->hasContainer($childId)
+        ) {
+            return;
+        }
+
+        throw new \InvalidArgumentException('Cannot insert a container attached to another document');
+    }
+
+    /**
+     * @return array{ContainerId, LoroDoc|null}|null
+     */
+    private static function attachedChildInfo(object $child): ?array
+    {
+        return match (true) {
+            $child instanceof LoroCounter => $child->isAttached() ? [$child->id(), $child->doc()] : null,
+            $child instanceof LoroList => $child->isAttached() ? [$child->id(), $child->doc()] : null,
+            $child instanceof LoroMap => $child->isAttached() ? [$child->id(), $child->doc()] : null,
+            $child instanceof LoroMovableList => $child->isAttached() ? [$child->id(), $child->doc()] : null,
+            $child instanceof LoroText => $child->isAttached() ? [$child->id(), $child->doc()] : null,
+            $child instanceof LoroTree => $child->isAttached() ? [$child->id(), $child->doc()] : null,
+            default => null,
+        };
     }
 }

@@ -63,6 +63,27 @@ final class Value
         };
     }
 
+    public static function toPhp(LoroValue|ValueOrContainer $value): mixed
+    {
+        if ($value instanceof ValueOrContainer) {
+            return self::valueOrContainerToPhp($value);
+        }
+
+        return match ($value->variant) {
+            'Null' => null,
+            'Bool', 'String' => $value->fields['value'],
+            'Double' => $value->fields['value'],
+            'I64' => (int) $value->fields['value'],
+            'Binary' => new BinaryValue($value->fields['value']),
+            'List' => array_map(self::toPhp(...), $value->fields['value']),
+            'Map' => self::mapToPhp($value->fields['value']),
+            'Container' => $value->fields['value'],
+            default => throw new \UnexpectedValueException(
+                'Cannot convert LoroValue variant ' . $value->variant . ' to PHP'
+            ),
+        };
+    }
+
     public static function null(): LoroValue
     {
         return LoroValue::null();
@@ -118,6 +139,64 @@ final class Value
         return array_is_list($value)
             ? self::list($value)
             : self::map($value);
+    }
+
+    private static function mapToPhp(array $value): array
+    {
+        $map = [];
+        foreach ($value as $key => $item) {
+            $map[$key] = self::toPhp($item);
+        }
+
+        return $map;
+    }
+
+    private static function valueOrContainerToPhp(ValueOrContainer $value): mixed
+    {
+        if (($loroValue = $value->asValue()) !== null) {
+            return self::toPhp($loroValue);
+        }
+
+        if (($text = $value->asLoroText()) !== null) {
+            return $text->slice(0, $text->lenUnicode());
+        }
+
+        if (($counter = $value->asLoroCounter()) !== null) {
+            return self::normalizeNumber($counter->getValue());
+        }
+
+        if (($list = $value->asLoroList()) !== null) {
+            return self::toPhp($list->getDeepValue());
+        }
+
+        if (($movableList = $value->asLoroMovableList()) !== null) {
+            return self::toPhp($movableList->getDeepValue());
+        }
+
+        if (($map = $value->asLoroMap()) !== null) {
+            return self::toPhp($map->getDeepValue());
+        }
+
+        if (($tree = $value->asLoroTree()) !== null) {
+            return self::toPhp($tree->getValue());
+        }
+
+        if (($containerId = $value->asContainer()) !== null) {
+            return $containerId;
+        }
+
+        if (($unknown = $value->asLoroUnknown()) !== null) {
+            return $unknown->id();
+        }
+
+        throw new \UnexpectedValueException('Cannot convert empty ValueOrContainer to PHP');
+    }
+
+    private static function normalizeNumber(float $value): float|int
+    {
+        $intValue = (int) $value;
+
+        return (float) $intValue === $value ? $intValue : $value;
     }
 
     private static function containerIdFromObject(mixed $value): ?ContainerId
