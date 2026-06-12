@@ -1,0 +1,22 @@
+[package]
+name = "loro-php"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+
+[lib]
+crate-type = ["cdylib", "staticlib"]
+
+[[bin]]
+name = "uniffi-bindgen"
+path = "src/uniffi-bindgen.rs"
+
+[dependencies]
+loro-ffi = { git = "https://github.com/loro-dev/loro-ffi.git", tag = "v1.13.0" }
+uniffi = { version = "0.31.1" }
+
+[build-dependencies]
+uniffi = { version = "0.31.1", features = ["build"] }
+
+[features]
+cli = ["uniffi/cli"]

@@ -1,0 +1,3 @@
+[bindings.php]
+namespace = "Loro"
+file_name = "LoroFFI.php"

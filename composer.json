@@ -1,0 +1,34 @@
+{
+  "name": "loro-dev/loro-php",
+  "description": "Experimental PHP bindings for Loro CRDT via UniFFI.",
+  "type": "library",
+  "license": "MIT",
+  "autoload": {
+    "files": [
+      "Sources/Loro/NativeLibrary.php",
+      "Sources/Loro/LoroFFI.php",
+      "Sources/Loro/Value.php",
+      "Sources/Loro/Container.php",
+      "Sources/Loro/Loro.php",
+      "Sources/Loro/Event.php",
+      "Sources/Loro/Ephemeral.php",
+      "Sources/Loro/Version.php"
+    ]
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "Loro\\Tests\\": "Tests/LoroTests/"
+    }
+  },
+  "scripts": {
+    "build-ffi": "scripts/build_php_ffi.sh",
+    "test": "@php -d ffi.enable=1 vendor/bin/phpunit"
+  },
+  "require": {
+    "php": ">=8.1",
+    "ext-ffi": "*"
+  },
+  "require-dev": {
+    "phpunit/phpunit": "^10.5"
+  }
+}
