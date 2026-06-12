@@ -4,15 +4,12 @@ declare(strict_types=1);
 
 namespace Loro\Tests;
 
-use Loro\Container;
 use Loro\ContainerDiff;
 use Loro\DiffEvent;
-use Loro\Events;
-use Loro\Export;
+use Loro\ExportMode;
 use Loro\FirstCommitFromPeerPayload;
 use Loro\Frontiers;
 use Loro\Index;
-use Loro\Loro;
 use Loro\LoroDoc;
 use Loro\LoroList;
 use Loro\LoroMap;
@@ -20,7 +17,6 @@ use Loro\LoroText;
 use Loro\PathItem;
 use Loro\PreCommitCallbackPayload;
 use Loro\TreeParentId;
-use Loro\Value;
 use Loro\ValueOrContainer;
 use Loro\VersionVector;
 
@@ -30,7 +26,7 @@ final class EventBehaviorTest extends LoroTestCase
     {
         $doc = new LoroDoc();
         $events = [];
-        $subscription = Events::subscribeRoot($doc, static function (DiffEvent $event) use (&$events): void {
+        $subscription = $doc->subscribeRoot(static function (DiffEvent $event) use (&$events): void {
             $events[] = $event;
         });
 
@@ -42,7 +38,7 @@ final class EventBehaviorTest extends LoroTestCase
         self::assertSame('Local', $events[0]->triggeredBy->variant);
         self::assertEquals($text->id(), $events[0]->events[0]->target);
         self::assertSame('Text', $events[0]->events[0]->diff->variant);
-        self::assertSame([['insert' => '3']], Loro::textDeltaToPhp($events[0]->events[0]->diff->fields['diff']));
+        self::assertSame([['insert' => '3']], \Loro\UniFFITextStyleHelper::textDeltaToPhp($events[0]->events[0]->diff->fields['diff']));
 
         $text->insert(1, '12');
         $doc->commit();
@@ -51,7 +47,7 @@ final class EventBehaviorTest extends LoroTestCase
         self::assertSame([
             ['retain' => 1],
             ['insert' => '12'],
-        ], Loro::textDeltaToPhp($events[1]->events[0]->diff->fields['diff']));
+        ], \Loro\UniFFITextStyleHelper::textDeltaToPhp($events[1]->events[0]->diff->fields['diff']));
 
         $subscription->unsubscribe();
     }
@@ -60,22 +56,22 @@ final class EventBehaviorTest extends LoroTestCase
     {
         $doc = new LoroDoc();
         $events = [];
-        $subscription = Events::subscribeRoot($doc, static function (DiffEvent $event) use (&$events): void {
+        $subscription = $doc->subscribeRoot(static function (DiffEvent $event) use (&$events): void {
             $events[] = $event;
         });
 
         $map = $doc->getMap('map');
-        $subMap = Container::insertMapContainer($map, 'sub', new LoroMap());
+        $subMap = $map->setContainer('sub', new LoroMap());
         self::assertInstanceOf(LoroMap::class, $subMap);
-        Container::insertMapValue($subMap, '0', '1');
+        $subMap->set('0', '1');
         $doc->commit();
 
         self::assertSame(['map', 'sub'], self::pathToPhp($events[0]->events[1]->path));
 
-        $list = Container::insertMapContainer($subMap, 'list', new LoroList());
+        $list = $subMap->setContainer('list', new LoroList());
         self::assertInstanceOf(LoroList::class, $list);
-        Container::insertListValue($list, 0, '2');
-        $text = Container::insertListContainer($list, 1, new LoroText());
+        $list->insert(0, '2');
+        $text = $list->insertContainer(1, new LoroText());
         self::assertInstanceOf(LoroText::class, $text);
         $doc->commit();
 
@@ -91,18 +87,18 @@ final class EventBehaviorTest extends LoroTestCase
     {
         $doc = new LoroDoc();
         $events = [];
-        $subscription = Events::subscribeRoot($doc, static function (DiffEvent $event) use (&$events): void {
+        $subscription = $doc->subscribeRoot(static function (DiffEvent $event) use (&$events): void {
             $events[] = $event;
         });
 
         $list = $doc->getList('list');
-        Container::insertListValue($list, 0, '3');
+        $list->insert(0, '3');
         $doc->commit();
 
         self::assertSame('List', $events[0]->events[0]->diff->variant);
         self::assertSame([['insert' => ['3'], 'isMove' => false]], self::listDiffToPhp($events[0]->events[0]));
 
-        Container::insertListValue($list, 1, '12');
+        $list->insert(1, '12');
         $doc->commit();
         self::assertSame([
             ['retain' => 1],
@@ -110,15 +106,15 @@ final class EventBehaviorTest extends LoroTestCase
         ], self::listDiffToPhp($events[1]->events[0]));
 
         $map = $doc->getMap('map');
-        Container::insertMapValue($map, '0', '3');
-        Container::insertMapValue($map, '1', '2');
+        $map->set('0', '3');
+        $map->set('1', '2');
         $doc->commit();
 
         $mapDiff = $events[2]->events[0]->diff;
         self::assertSame('Map', $mapDiff->variant);
         self::assertSame(['0' => '3', '1' => '2'], self::mapUpdatedToPhp($mapDiff->fields['diff']->updated));
 
-        Container::insertMapValue($map, '0', null);
+        $map->set('0', null);
         $map->delete('1');
         $doc->commit();
 
@@ -126,7 +122,7 @@ final class EventBehaviorTest extends LoroTestCase
         self::assertArrayHasKey('0', $updated);
         self::assertArrayHasKey('1', $updated);
         self::assertInstanceOf(ValueOrContainer::class, $updated['0']);
-        self::assertNull(Value::toPhp($updated['0']));
+        self::assertNull($updated['0']->toJSON());
         self::assertNull($updated['1']);
 
         $tree = $doc->getTree('tree');
@@ -146,17 +142,17 @@ final class EventBehaviorTest extends LoroTestCase
         $map = $doc->getMap('map');
         $times = 0;
 
-        $subscription = Events::subscribeContainer($map, static function () use (&$times): void {
+        $subscription = $map->subscribe(static function () use (&$times): void {
             ++$times;
         });
         self::assertNotNull($subscription);
 
-        $subMap = Container::insertMapContainer($map, 'sub', new LoroMap());
+        $subMap = $map->setContainer('sub', new LoroMap());
         self::assertInstanceOf(LoroMap::class, $subMap);
         $doc->commit();
         self::assertSame(1, $times);
 
-        $text = Container::insertMapContainer($subMap, 'k', new LoroText());
+        $text = $subMap->setContainer('k', new LoroText());
         self::assertInstanceOf(LoroText::class, $text);
         $doc->commit();
         self::assertSame(2, $times);
@@ -178,10 +174,10 @@ final class EventBehaviorTest extends LoroTestCase
         $text1 = $doc1->getText('text');
         $text2 = $doc2->getText('text');
 
-        $sub1 = Events::subscribeLocalUpdate($doc1, static function (string $update) use ($doc2): void {
+        $sub1 = $doc1->subscribeLocalUpdate(static function (string $update) use ($doc2): void {
             $doc2->import($update);
         });
-        $sub2 = Events::subscribeLocalUpdate($doc2, static function (string $update) use ($doc1): void {
+        $sub2 = $doc2->subscribeLocalUpdate(static function (string $update) use ($doc1): void {
             $doc1->import($update);
         });
 
@@ -207,27 +203,26 @@ final class EventBehaviorTest extends LoroTestCase
         $doc->setPeerId(0);
         $peers = [];
 
-        $subscription = Events::subscribeFirstCommitFromPeer(
-            $doc,
+        $subscription = $doc->subscribeFirstCommitFromPeer(
             static function (FirstCommitFromPeerPayload $payload) use ($doc, &$peers): void {
                 $peer = (string) $payload->peer;
                 $peers[] = $peer;
-                Container::insertMapValue($doc->getMap('map'), $peer, 'user-' . $peer);
+                $doc->getMap('map')->set($peer, 'user-' . $peer);
             }
         );
 
         $list = $doc->getList('list');
-        Container::insertListValue($list, 0, 100);
+        $list->insert(0, 100);
         $doc->commit();
-        Container::insertListValue($list, 0, 200);
+        $list->insert(0, 200);
         $doc->commit();
 
         $doc->setPeerId(1);
-        Container::insertListValue($list, 0, 300);
+        $list->insert(0, 300);
         $doc->commit();
 
         self::assertSame(['0', '1'], $peers);
-        self::assertSame('user-0', Value::toPhp($doc->getMap('map')->get('0')));
+        self::assertSame('user-0', $doc->getMap('map')->get('0')?->toJSON());
 
         $subscription->detach();
     }
@@ -239,8 +234,7 @@ final class EventBehaviorTest extends LoroTestCase
         $seenPeer = null;
         $seenOrigin = null;
 
-        $subscription = Events::subscribePreCommit(
-            $doc,
+        $subscription = $doc->subscribePreCommit(
             static function (PreCommitCallbackPayload $payload) use ($doc, &$seenPeer, &$seenOrigin): void {
                 $seenPeer = $doc->peerId();
                 $seenOrigin = $payload->origin;
@@ -250,7 +244,7 @@ final class EventBehaviorTest extends LoroTestCase
         );
 
         $doc->setNextCommitOrigin('origin from test');
-        Container::insertListValue($doc->getList('list'), 0, 100);
+        $doc->getList('list')->insert(0, 100);
         $doc->commit();
 
         $change = $doc->getChange($doc->oplogFrontiers()->toVec()[0]);
@@ -274,17 +268,16 @@ final class EventBehaviorTest extends LoroTestCase
         $doc->getText('local')->insert(0, 'local');
 
         $seenPeer = null;
-        $subscription = Events::subscribePreCommit(
-            $doc,
+        $subscription = $doc->subscribePreCommit(
             static function () use ($doc, &$seenPeer): void {
                 $seenPeer = $doc->peerId();
             }
         );
 
-        $doc->importBatch([$remote->export(Export::snapshot())]);
+        $doc->importBatch([$remote->export(ExportMode::snapshot())]);
 
         self::assertSame(1, $seenPeer);
-        $json = Loro::toJson($doc);
+        $json = $doc->toJSON();
         self::assertCount(2, $json);
         self::assertSame('local', $json['local']);
         self::assertSame('remote', $json['remote']);
@@ -299,8 +292,7 @@ final class EventBehaviorTest extends LoroTestCase
         $doc->getText('text')->insert(0, 'local');
 
         $seenPeer = null;
-        $subscription = Events::subscribePreCommit(
-            $doc,
+        $subscription = $doc->subscribePreCommit(
             static function () use ($doc, &$seenPeer): void {
                 $seenPeer = $doc->peerId();
             }
@@ -309,7 +301,7 @@ final class EventBehaviorTest extends LoroTestCase
         $doc->checkoutToLatest();
 
         self::assertSame(1, $seenPeer);
-        self::assertSame(['text' => 'local'], Loro::toJson($doc));
+        self::assertSame(['text' => 'local'], $doc->toJSON());
 
         $subscription->detach();
     }
@@ -317,22 +309,22 @@ final class EventBehaviorTest extends LoroTestCase
     public function testImportAndCheckoutEventsUseTheirTriggerKinds(): void
     {
         $source = new LoroDoc();
-        Container::insertListValue($source->getList('list'), 0, 123);
+        $source->getList('list')->insert(0, 123);
         $source->commit();
 
         $imported = new LoroDoc();
         $importEvents = [];
-        $importSub = Events::subscribeRoot($imported, static function (DiffEvent $event) use (&$importEvents): void {
+        $importSub = $imported->subscribeRoot(static function (DiffEvent $event) use (&$importEvents): void {
             $importEvents[] = $event;
         });
-        $imported->import($source->export(Export::updates(new VersionVector())));
+        $imported->import($source->export(ExportMode::updates(new VersionVector())));
 
         self::assertCount(1, $importEvents);
         self::assertSame('Import', $importEvents[0]->triggeredBy->variant);
         $importSub->detach();
 
         $checkoutEvents = [];
-        $checkoutSub = Events::subscribeRoot($source, static function (DiffEvent $event) use (&$checkoutEvents): void {
+        $checkoutSub = $source->subscribeRoot(static function (DiffEvent $event) use (&$checkoutEvents): void {
             $checkoutEvents[] = $event;
         });
         $source->checkout(new Frontiers());
@@ -346,14 +338,14 @@ final class EventBehaviorTest extends LoroTestCase
     {
         $doc = new LoroDoc();
         $events = [];
-        $subscription = Events::subscribeRoot($doc, static function (DiffEvent $event) use (&$events): void {
+        $subscription = $doc->subscribeRoot(static function (DiffEvent $event) use (&$events): void {
             $events[] = $event;
         });
 
         $list = $doc->getMovableList('list');
-        Container::pushListValue($list, 'a');
-        Container::pushListValue($list, 'b');
-        Container::pushListValue($list, 'c');
+        $list->push('a');
+        $list->push('b');
+        $list->push('c');
         $doc->commit();
 
         self::assertCount(1, $events);
@@ -390,7 +382,7 @@ final class EventBehaviorTest extends LoroTestCase
         return array_map(static function ($item): array {
             return match ($item->variant) {
                 'Insert' => [
-                    'insert' => array_map(static fn(ValueOrContainer $value): mixed => Value::toPhp($value), $item->fields['insert']),
+                    'insert' => array_map(static fn(ValueOrContainer $value): mixed => $value->toJSON(), $item->fields['insert']),
                     'isMove' => $item->fields['isMove'],
                 ],
                 'Delete' => ['delete' => $item->fields['delete']],
@@ -410,7 +402,7 @@ final class EventBehaviorTest extends LoroTestCase
         ksort($updated);
         $result = [];
         foreach ($updated as $key => $value) {
-            $result[$key] = $value === null ? null : Value::toPhp($value);
+            $result[$key] = $value === null ? null : $value->toJSON();
         }
 
         return $result;

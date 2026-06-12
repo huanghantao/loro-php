@@ -19,6 +19,6 @@ abstract class LoroTestCase extends TestCase
 
     protected static function textString(LoroText $text): string
     {
-        return $text->slice(0, $text->lenUnicode());
+        return $text->toString();
     }
 }

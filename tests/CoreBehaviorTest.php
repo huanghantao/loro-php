@@ -4,24 +4,20 @@ declare(strict_types=1);
 
 namespace Loro\Tests;
 
-use Loro\Container;
 use Loro\DiffEvent;
-use Loro\Events;
-use Loro\Export;
+use Loro\ExportMode;
 use Loro\Frontiers;
-use Loro\Loro;
 use Loro\LoroDoc;
 use Loro\LoroList;
 use Loro\LoroText;
 use Loro\TreeParentId;
-use Loro\Value;
 use Loro\VersionVector;
 
 final class CoreBehaviorTest extends LoroTestCase
 {
     public function testVersionIsExposed(): void
     {
-        self::assertMatchesRegularExpression('/^\d+\.\d+\.\d+/', Loro::version());
+        self::assertMatchesRegularExpression('/^\d+\.\d+\.\d+/', \Loro\getVersion());
     }
 
     public function testCounterIncrementEncodeAndEvent(): void
@@ -35,25 +31,25 @@ final class CoreBehaviorTest extends LoroTestCase
 
         self::assertSame(2.0, $counter->getValue());
 
-        $updates = $doc->export(Export::updates(new VersionVector()));
-        $snapshot = $doc->export(Export::snapshot());
+        $updates = $doc->export(ExportMode::updates(new VersionVector()));
+        $snapshot = $doc->export(ExportMode::snapshot());
         $jsonUpdates = $doc->exportJsonUpdates(new VersionVector(), $doc->oplogVv());
 
         $fromUpdates = new LoroDoc();
         $fromUpdates->import($updates);
-        self::assertEquals(Loro::toJson($doc), Loro::toJson($fromUpdates));
+        self::assertEquals($doc->toJSON(), $fromUpdates->toJSON());
 
         $fromSnapshot = new LoroDoc();
         $fromSnapshot->import($snapshot);
-        self::assertEquals(Loro::toJson($doc), Loro::toJson($fromSnapshot));
+        self::assertEquals($doc->toJSON(), $fromSnapshot->toJSON());
 
         $fromJson = new LoroDoc();
         $fromJson->importJsonUpdates($jsonUpdates);
-        self::assertEquals(Loro::toJson($doc), Loro::toJson($fromJson));
+        self::assertEquals($doc->toJSON(), $fromJson->toJSON());
 
         $eventDoc = new LoroDoc();
         $triggered = false;
-        $subscription = Events::subscribeRoot($eventDoc, static function (DiffEvent $event) use (&$triggered): void {
+        $subscription = $eventDoc->subscribeRoot(static function (DiffEvent $event) use (&$triggered): void {
             $triggered = true;
             $diff = $event->events[0]->diff;
 
@@ -81,7 +77,7 @@ final class CoreBehaviorTest extends LoroTestCase
         $doc->commit();
 
         $triggered = false;
-        $subscription = Events::subscribeRoot($doc, static function (DiffEvent $event) use (&$triggered): void {
+        $subscription = $doc->subscribeRoot(static function (DiffEvent $event) use (&$triggered): void {
             self::assertContains($event->triggeredBy->variant, ['Checkout', 'Local']);
             $triggered = true;
         });
@@ -89,13 +85,13 @@ final class CoreBehaviorTest extends LoroTestCase
         $frontiers = $doc->oplogFrontiers();
         $text->insert(1, 'i');
 
-        self::assertSame(['text' => 'Hi'], Loro::toJson($doc));
+        self::assertSame(['text' => 'Hi'], $doc->toJSON());
         self::assertFalse($doc->isDetached());
 
         $doc->checkout($frontiers);
 
         self::assertTrue($doc->isDetached());
-        self::assertSame(['text' => 'H'], Loro::toJson($doc));
+        self::assertSame(['text' => 'H'], $doc->toJSON());
         self::assertTrue($triggered);
 
         $subscription->detach();
@@ -114,15 +110,15 @@ final class CoreBehaviorTest extends LoroTestCase
 
         $ids[0]->counter -= 1;
         $doc->checkout(Frontiers::fromIds($ids));
-        self::assertSame(['text' => '你好世'], Loro::toJson($doc));
+        self::assertSame(['text' => '你好世'], $doc->toJSON());
 
         $ids[0]->counter -= 1;
         $doc->checkout(Frontiers::fromIds($ids));
-        self::assertSame(['text' => '你好'], Loro::toJson($doc));
+        self::assertSame(['text' => '你好'], $doc->toJSON());
 
         $ids[0]->counter -= 1;
         $doc->checkout(Frontiers::fromIds($ids));
-        self::assertSame(['text' => '你'], Loro::toJson($doc));
+        self::assertSame(['text' => '你'], $doc->toJSON());
     }
 
     public function testCompareFrontiersAcrossTwoClients(): void
@@ -134,7 +130,7 @@ final class CoreBehaviorTest extends LoroTestCase
 
         $v0 = $doc->oplogFrontiers();
         $docB = new LoroDoc();
-        $docB->import($doc->export(Export::updates(new VersionVector())));
+        $docB->import($doc->export(ExportMode::updates(new VersionVector())));
 
         self::assertSame('Equal', $docB->cmpWithFrontiers($v0)->variant);
 
@@ -147,10 +143,10 @@ final class CoreBehaviorTest extends LoroTestCase
         $docB->commit();
         self::assertSame('Less', $docB->cmpWithFrontiers($doc->oplogFrontiers())->variant);
 
-        $docB->import($doc->export(Export::updates(new VersionVector())));
+        $docB->import($doc->export(ExportMode::updates(new VersionVector())));
         self::assertSame('Greater', $docB->cmpWithFrontiers($doc->oplogFrontiers())->variant);
 
-        $doc->import($docB->export(Export::updates(new VersionVector())));
+        $doc->import($docB->export(ExportMode::updates(new VersionVector())));
         self::assertSame('Equal', $docB->cmpWithFrontiers($doc->oplogFrontiers())->variant);
     }
 
@@ -160,66 +156,66 @@ final class CoreBehaviorTest extends LoroTestCase
         $list = $doc->getMovableList('list');
 
         self::assertSame(0, $list->len());
-        Container::pushListValue($list, 'a');
+        $list->push('a');
         self::assertSame(1, $list->len());
-        self::assertSame('a', Value::toPhp($list->get(0)));
-        self::assertSame('a', Value::toPhp($list->pop()));
+        self::assertSame('a', $list->get(0)?->toJSON());
+        self::assertSame('a', $list->pop()?->toJSON());
         self::assertSame(0, $list->len());
 
-        Container::pushListValue($list, 'a');
-        Container::pushListValue($list, 'b');
-        Container::pushListValue($list, 'c');
-        Container::setMovableListValue($list, 2, 'd');
+        $list->push('a');
+        $list->push('b');
+        $list->push('c');
+        $list->set(2, 'd');
         $list->mov(0, 1);
 
         $doc2 = new LoroDoc();
         $list2 = $doc2->getMovableList('list');
-        $doc2->import($doc->export(Export::updates(new VersionVector())));
+        $doc2->import($doc->export(ExportMode::updates(new VersionVector())));
 
-        self::assertSame(['b', 'a', 'd'], Value::toPhp($list2->getDeepValue()));
+        self::assertSame(['b', 'a', 'd'], $list2->toJSON());
     }
 
     public function testMovableListSubContainersAndConcurrentSet(): void
     {
         $doc = new LoroDoc();
         $list = $doc->getMovableList('list');
-        Container::pushListValue($list, 'a');
-        Container::pushListValue($list, 'b');
-        Container::pushListValue($list, 'c');
+        $list->push('a');
+        $list->push('b');
+        $list->push('c');
 
-        $subList = Container::insertListContainer($list, 1, new LoroList());
-        Container::pushListValue($subList, 'd');
-        Container::pushListValue($subList, 'e');
-        Container::pushListValue($subList, 'f');
+        $subList = $list->insertContainer(1, new LoroList());
+        $subList->push('d');
+        $subList->push('e');
+        $subList->push('f');
 
-        self::assertSame(['a', ['d', 'e', 'f'], 'b', 'c'], Loro::toJson($doc)['list']);
+        self::assertSame(['a', ['d', 'e', 'f'], 'b', 'c'], $doc->toJSON()['list']);
 
         $list->mov(1, 0);
-        self::assertSame([['d', 'e', 'f'], 'a', 'b', 'c'], Loro::toJson($doc)['list']);
+        self::assertSame([['d', 'e', 'f'], 'a', 'b', 'c'], $doc->toJSON()['list']);
 
         $list->mov(0, 3);
-        self::assertSame(['a', 'b', 'c', ['d', 'e', 'f']], Loro::toJson($doc)['list']);
+        self::assertSame(['a', 'b', 'c', ['d', 'e', 'f']], $doc->toJSON()['list']);
 
         $docA = new LoroDoc();
         $docA->setPeerId(0);
         $listA = $docA->getMovableList('list');
-        Container::pushListValue($listA, 'a');
-        Container::pushListValue($listA, 'b');
-        Container::pushListValue($listA, 'c');
+        $listA->push('a');
+        $listA->push('b');
+        $listA->push('c');
 
         $docB = new LoroDoc();
         $docB->setPeerId(1);
         $listB = $docB->getMovableList('list');
-        $docB->import($docA->export(Export::updates(new VersionVector())));
+        $docB->import($docA->export(ExportMode::updates(new VersionVector())));
 
-        Container::setMovableListValue($listA, 1, 'fromA');
-        Container::setMovableListValue($listB, 1, 'fromB');
+        $listA->set(1, 'fromA');
+        $listB->set(1, 'fromB');
 
-        $docB->import($docA->export(Export::updates(new VersionVector())));
-        $docA->import($docB->export(Export::updates(new VersionVector())));
+        $docB->import($docA->export(ExportMode::updates(new VersionVector())));
+        $docA->import($docB->export(ExportMode::updates(new VersionVector())));
 
-        self::assertSame(['a', 'fromB', 'c'], Loro::toJson($docA)['list']);
-        self::assertSame(['a', 'fromB', 'c'], Loro::toJson($docB)['list']);
+        self::assertSame(['a', 'fromB', 'c'], $docA->toJSON()['list']);
+        self::assertSame(['a', 'fromB', 'c'], $docB->toJSON()['list']);
     }
 
     public function testMovableListConcurrentMoveKeepsLength(): void
@@ -227,42 +223,42 @@ final class CoreBehaviorTest extends LoroTestCase
         $docA = new LoroDoc();
         $docA->setPeerId(0);
         $listA = $docA->getMovableList('list');
-        Container::pushListValue($listA, 'a');
-        Container::pushListValue($listA, 'b');
-        Container::pushListValue($listA, 'c');
+        $listA->push('a');
+        $listA->push('b');
+        $listA->push('c');
 
         $docB = new LoroDoc();
         $docB->setPeerId(1);
         $listB = $docB->getMovableList('list');
-        $docB->import($docA->export(Export::updates(new VersionVector())));
+        $docB->import($docA->export(ExportMode::updates(new VersionVector())));
 
         $listA->mov(0, 1);
         $listB->mov(0, 1);
 
-        $docB->import($docA->export(Export::updates(new VersionVector())));
+        $docB->import($docA->export(ExportMode::updates(new VersionVector())));
 
         self::assertSame(3, $listB->len());
-        self::assertSame(['b', 'a', 'c'], Loro::toJson($docB)['list']);
+        self::assertSame(['b', 'a', 'c'], $docB->toJSON()['list']);
     }
 
     public function testMovableListCanBeInsertedIntoListAsAttachedContainer(): void
     {
         $doc = new LoroDoc();
         $list = $doc->getMovableList('list');
-        Container::pushListValue($list, 'a');
-        Container::pushListValue($list, 'b');
-        Container::pushListValue($list, 'c');
+        $list->push('a');
+        $list->push('b');
+        $list->push('c');
 
         $parent = $doc->getList('parent');
-        $newList = Container::insertListContainer($parent, 0, $list);
+        $newList = $parent->insertContainer(0, $list);
 
-        self::assertSame([['a', 'b', 'c']], Loro::toJson($doc)['parent']);
+        self::assertSame([['a', 'b', 'c']], $doc->toJSON()['parent']);
 
         $newList->mov(0, 1);
-        self::assertSame([['b', 'a', 'c']], Loro::toJson($doc)['parent']);
+        self::assertSame([['b', 'a', 'c']], $doc->toJSON()['parent']);
 
         $list->mov(0, 2);
-        self::assertSame([['b', 'a', 'c']], Loro::toJson($doc)['parent']);
+        self::assertSame([['b', 'a', 'c']], $doc->toJSON()['parent']);
     }
 
     public function testTreeCreateMoveDeleteAndMeta(): void
@@ -285,8 +281,8 @@ final class CoreBehaviorTest extends LoroTestCase
         self::assertEquals([$child2], $tree->children(TreeParentId::node($child)));
 
         $meta = $tree->getMeta($root);
-        Container::insertMapValue($meta, 'a', 123);
-        self::assertSame(123, Value::toPhp($meta->get('a')));
+        $meta->set('a', 123);
+        self::assertSame(123, $meta->get('a')?->toJSON());
 
         $tree->delete($child);
 
@@ -300,10 +296,10 @@ final class CoreBehaviorTest extends LoroTestCase
         $doc = new LoroDoc();
         $list = $doc->getMovableList('list');
 
-        Container::insertListValue($list, 0, 100);
-        $text = Container::setMovableListContainer($list, 0, new LoroText());
+        $list->insert(0, 100);
+        $text = $list->setContainer(0, new LoroText());
         $text->insert(0, 'Hello');
 
-        self::assertSame(['Hello'], Loro::toJson($doc)['list']);
+        self::assertSame(['Hello'], $doc->toJSON()['list']);
     }
 }

@@ -56,8 +56,6 @@ php -d ffi.enable=1 example.php
 
 require __DIR__ . '/vendor/autoload.php';
 
-use Loro\Container;
-use Loro\Loro;
 use Loro\LoroDoc;
 
 $doc = new LoroDoc();
@@ -67,16 +65,16 @@ $text->insert(0, 'Hello');
 $text->insert(5, ', Loro');
 
 $profile = $doc->getMap('profile');
-Container::insertMapValue($profile, 'name', 'Ada');
-Container::insertMapValue($profile, 'online', true);
+$profile->set('name', 'Ada');
+$profile->set('online', true);
 
 $todos = $doc->getList('todos');
-Container::pushListValue($todos, 'write docs');
-Container::pushListValue($todos, 'ship release');
+$todos->push('write docs');
+$todos->push('ship release');
 
 $doc->commit();
 
-print_r(Loro::toJson($doc));
+print_r($doc->toJSON());
 ```
 
 ### Sync two documents
@@ -86,7 +84,7 @@ print_r(Loro::toJson($doc));
 
 require __DIR__ . '/vendor/autoload.php';
 
-use Loro\Export;
+use Loro\ExportMode;
 use Loro\LoroDoc;
 use Loro\VersionVector;
 
@@ -98,13 +96,13 @@ $alice->commit();
 
 $bob = new LoroDoc();
 $bob->setPeerId(2);
-$bob->import($alice->export(Export::updates(new VersionVector())));
+$bob->import($alice->export(ExportMode::updates(new VersionVector())));
 
 $bobText = $bob->getText('text');
 $bobText->insert($bobText->lenUnicode(), ' from Bob');
 $bob->commit();
 
-$alice->import($bob->export(Export::updates($alice->oplogVv())));
+$alice->import($bob->export(ExportMode::updates($alice->oplogVv())));
 
 echo $aliceText->slice(0, $aliceText->lenUnicode()); // Hello from Bob
 ```
@@ -116,18 +114,16 @@ echo $aliceText->slice(0, $aliceText->lenUnicode()); // Hello from Bob
 
 require __DIR__ . '/vendor/autoload.php';
 
-use Loro\Container;
-use Loro\Loro;
 use Loro\LoroDoc;
 
 $doc = new LoroDoc();
-Loro::configureTextStyle($doc, ['bold' => 'after']);
+$doc->configTextStyle(['bold' => 'after']);
 
 $text = $doc->getText('text');
 $text->insert(0, 'Hello world');
-Container::markText($text, 0, 5, 'bold', true);
+$text->mark(0, 5, 'bold', true);
 
-print_r(Loro::textDeltaToPhp($text->toDelta()));
+print_r($text->toDeltaJSON());
 ```
 
 ### Save and restore a snapshot
@@ -137,20 +133,19 @@ print_r(Loro::textDeltaToPhp($text->toDelta()));
 
 require __DIR__ . '/vendor/autoload.php';
 
-use Loro\Export;
-use Loro\Loro;
+use Loro\ExportMode;
 use Loro\LoroDoc;
 
 $doc = new LoroDoc();
 $doc->getText('text')->insert(0, 'snapshot me');
 $doc->commit();
 
-$snapshot = $doc->export(Export::snapshot());
+$snapshot = $doc->export(ExportMode::snapshot());
 
 $restored = new LoroDoc();
 $restored->import($snapshot);
 
-print_r(Loro::toJson($restored)); // ['text' => 'snapshot me']
+print_r($restored->toJSON()); // ['text' => 'snapshot me']
 ```
 
 ### Share presence with Awareness
@@ -161,10 +156,9 @@ print_r(Loro::toJson($restored)); // ['text' => 'snapshot me']
 require __DIR__ . '/vendor/autoload.php';
 
 use Loro\Awareness;
-use Loro\AwarenessState;
 
 $alice = new Awareness(1, 30000);
-AwarenessState::setLocalState($alice, [
+$alice->setLocalState([
     'name' => 'Alice',
     'cursor' => 5,
 ]);
@@ -172,7 +166,7 @@ AwarenessState::setLocalState($alice, [
 $bob = new Awareness(2, 30000);
 $bob->apply($alice->encodeAll());
 
-print_r(AwarenessState::getState($bob, 1));
+print_r($bob->getState(1));
 ```
 
 ## Local Development

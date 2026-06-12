@@ -4,13 +4,10 @@ declare(strict_types=1);
 
 namespace Loro\Tests;
 
-use Loro\Container;
 use Loro\DiffEvent;
-use Loro\Events;
 use Loro\LoroDoc;
 use Loro\TreeId;
 use Loro\TreeParentId;
-use Loro\Value;
 
 final class TreeBehaviorTest extends LoroTestCase
 {
@@ -49,8 +46,8 @@ final class TreeBehaviorTest extends LoroTestCase
         $child = $tree->create(TreeParentId::node($root));
         $child2 = $tree->create(TreeParentId::node($root));
 
-        Container::insertMapValue($tree->getMeta($child), 'name', 'child');
-        self::assertSame('child', Value::toPhp($tree->getMeta($child)->get('name')));
+        $tree->getMeta($child)->set('name', 'child');
+        self::assertSame('child', $tree->getMeta($child)->get('name')?->toJSON());
         self::assertTrue($tree->contains($child));
 
         $tree->delete($child);
@@ -69,10 +66,10 @@ final class TreeBehaviorTest extends LoroTestCase
         $root = $tree->create(TreeParentId::root());
         $child = $tree->create(TreeParentId::node($root));
 
-        Container::insertMapValue($tree->getMeta($root), 'name', 'root');
-        Container::insertMapValue($tree->getMeta($child), 'name', 'child');
+        $tree->getMeta($root)->set('name', 'root');
+        $tree->getMeta($child)->set('name', 'child');
 
-        $value = Value::toPhp($tree->getValueWithMeta());
+        $value = $tree->getValueWithMetaJSON();
 
         self::assertCount(1, $value);
         self::assertNull($value[0]['parent']);
@@ -96,11 +93,11 @@ final class TreeBehaviorTest extends LoroTestCase
         $child = $tree->create(TreeParentId::node($root));
         $sibling = $tree->create(TreeParentId::node($root));
 
-        Container::insertMapValue($tree->getMeta($child), 'name', 'child');
-        Container::insertMapValue($tree->getMeta($sibling), 'name', 'sibling');
+        $tree->getMeta($child)->set('name', 'child');
+        $tree->getMeta($sibling)->set('name', 'sibling');
         $tree->delete($child);
 
-        $value = Value::toPhp($tree->getValueWithMeta());
+        $value = $tree->getValueWithMetaJSON();
 
         self::assertTrue($tree->isNodeDeleted($child));
         self::assertCount(1, $value[0]['children']);
@@ -119,7 +116,7 @@ final class TreeBehaviorTest extends LoroTestCase
         $doc->commit();
 
         $events = [];
-        $subscription = Events::subscribeContainer($tree, static function (DiffEvent $event) use (&$events): void {
+        $subscription = $tree->subscribe(static function (DiffEvent $event) use (&$events): void {
             $events[] = $event;
         });
         self::assertNotNull($subscription);

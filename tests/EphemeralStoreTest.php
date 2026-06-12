@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Loro\Tests;
 
-use Loro\Ephemeral;
 use Loro\EphemeralStore;
 use Loro\EphemeralStoreEvent;
 use Loro\LoroValue;
@@ -15,9 +14,9 @@ final class EphemeralStoreTest extends LoroTestCase
     {
         $store = new EphemeralStore(60000);
 
-        Ephemeral::set($store, 'key1', 'value1');
-        Ephemeral::set($store, 'key2', 42);
-        Ephemeral::set($store, 'key3', true);
+        $store->set('key1', 'value1');
+        $store->set('key2', 42);
+        $store->set('key3', true);
 
         self::assertLoroValueEquals(LoroValue::string('value1'), $store->get('key1'));
         self::assertLoroValueEquals(LoroValue::i64(42), $store->get('key2'));
@@ -31,9 +30,9 @@ final class EphemeralStoreTest extends LoroTestCase
 
         self::assertCount(0, $store->keys());
 
-        Ephemeral::set($store, 'key1', 'value1');
-        Ephemeral::set($store, 'key2', 'value2');
-        Ephemeral::set($store, 'key3', 'value3');
+        $store->set('key1', 'value1');
+        $store->set('key2', 'value2');
+        $store->set('key3', 'value3');
 
         $keys = $store->keys();
         self::assertCount(3, $keys);
@@ -46,8 +45,8 @@ final class EphemeralStoreTest extends LoroTestCase
     {
         $store = new EphemeralStore(60000);
 
-        Ephemeral::set($store, 'key1', 'value1');
-        Ephemeral::set($store, 'key2', 42);
+        $store->set('key1', 'value1');
+        $store->set('key2', 42);
 
         $allStates = $store->getAllStates();
         self::assertCount(2, $allStates);
@@ -59,8 +58,8 @@ final class EphemeralStoreTest extends LoroTestCase
     {
         $store = new EphemeralStore(60000);
 
-        Ephemeral::set($store, 'key1', 'value1');
-        Ephemeral::set($store, 'key2', 'value2');
+        $store->set('key1', 'value1');
+        $store->set('key2', 'value2');
 
         self::assertNotNull($store->get('key1'));
 
@@ -80,11 +79,11 @@ final class EphemeralStoreTest extends LoroTestCase
         $store = new EphemeralStore(60000);
         $receivedEvents = [];
 
-        $subscription = Ephemeral::subscribe($store, static function (EphemeralStoreEvent $event) use (&$receivedEvents): void {
+        $subscription = $store->subscribe(static function (EphemeralStoreEvent $event) use (&$receivedEvents): void {
             $receivedEvents[] = $event;
         });
 
-        Ephemeral::set($store, 'key1', 'value1');
+        $store->set('key1', 'value1');
         usleep(100000);
 
         self::assertGreaterThan(0, count($receivedEvents));
@@ -95,7 +94,7 @@ final class EphemeralStoreTest extends LoroTestCase
 
         $receivedEvents = [];
 
-        Ephemeral::set($store, 'key1', 'updated_value');
+        $store->set('key1', 'updated_value');
         usleep(100000);
 
         self::assertGreaterThan(0, count($receivedEvents));
@@ -123,12 +122,12 @@ final class EphemeralStoreTest extends LoroTestCase
         $store = new EphemeralStore(60000);
         $receivedUpdates = [];
 
-        $subscription = Ephemeral::subscribeLocalUpdate($store, static function (string $updateData) use (&$receivedUpdates): void {
+        $subscription = $store->subscribeLocalUpdate(static function (string $updateData) use (&$receivedUpdates): void {
             $receivedUpdates[] = $updateData;
         });
 
-        Ephemeral::set($store, 'key1', 'value1');
-        Ephemeral::set($store, 'key2', 42);
+        $store->set('key1', 'value1');
+        $store->set('key2', 42);
         usleep(100000);
 
         self::assertGreaterThan(0, count($receivedUpdates));
@@ -145,8 +144,8 @@ final class EphemeralStoreTest extends LoroTestCase
         $store1 = new EphemeralStore(60000);
         $store2 = new EphemeralStore(60000);
 
-        Ephemeral::set($store1, 'key1', 'value1');
-        Ephemeral::set($store1, 'key2', 42);
+        $store1->set('key1', 'value1');
+        $store1->set('key2', 42);
 
         $encodedData = $store1->encodeAll();
         $store2->apply($encodedData);
@@ -164,8 +163,8 @@ final class EphemeralStoreTest extends LoroTestCase
     {
         $store = new EphemeralStore(60000);
 
-        Ephemeral::set($store, 'key1', 'value1');
-        Ephemeral::set($store, 'key2', 'value2');
+        $store->set('key1', 'value1');
+        $store->set('key2', 'value2');
 
         $encodedKey1 = $store->encode('key1');
         self::assertGreaterThan(0, strlen($encodedKey1));
@@ -183,15 +182,15 @@ final class EphemeralStoreTest extends LoroTestCase
         $events1 = [];
         $events2 = [];
 
-        $subscription1 = Ephemeral::subscribe($store, static function (EphemeralStoreEvent $event) use (&$events1): void {
+        $subscription1 = $store->subscribe(static function (EphemeralStoreEvent $event) use (&$events1): void {
             $events1[] = $event;
         });
 
-        $subscription2 = Ephemeral::subscribe($store, static function (EphemeralStoreEvent $event) use (&$events2): void {
+        $subscription2 = $store->subscribe(static function (EphemeralStoreEvent $event) use (&$events2): void {
             $events2[] = $event;
         });
 
-        Ephemeral::set($store, 'test', 'value');
+        $store->set('test', 'value');
         usleep(100000);
 
         self::assertGreaterThan(0, count($events1));

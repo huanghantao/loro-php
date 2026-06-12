@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Loro\Tests;
 
-use Loro\Export;
+use Loro\ExportMode;
 use Loro\LoroDoc;
 
 final class IssueRegressionTest extends LoroTestCase
@@ -54,7 +54,7 @@ final class IssueRegressionTest extends LoroTestCase
 
     private static function sync(LoroDoc $left, LoroDoc $right): void
     {
-        $left->import($right->export(Export::updates($left->stateVv())));
-        $right->import($left->export(Export::updates($right->stateVv())));
+        $left->import($right->export(ExportMode::updates($left->stateVv())));
+        $right->import($left->export(ExportMode::updates($right->stateVv())));
     }
 }

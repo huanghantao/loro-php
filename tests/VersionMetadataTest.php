@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Loro\Tests;
 
 use Loro\CounterSpan;
-use Loro\Export;
+use Loro\ExportMode;
 use Loro\Frontiers;
 use Loro\Id;
 use Loro\IdSpan;
@@ -26,7 +26,7 @@ final class VersionMetadataTest extends LoroTestCase
 
         $a->getText('text')->insert(0, 'ha');
         $b->getText('text')->insert(0, 'yo');
-        $a->import($b->export(Export::updates(new VersionVector())));
+        $a->import($b->export(ExportMode::updates(new VersionVector())));
         $a->getText('text')->insert(0, 'k');
         $a->commit();
 
@@ -123,7 +123,7 @@ final class VersionMetadataTest extends LoroTestCase
         $doc0->getText('text')->insert(0, '0');
         $doc0->commit();
 
-        $updateMeta = decodeImportBlobMeta($doc0->export(Export::updates(new VersionVector())), false);
+        $updateMeta = decodeImportBlobMeta($doc0->export(ExportMode::updates(new VersionVector())), false);
 
         self::assertSame(1, $updateMeta->changeNum);
         self::assertNull($updateMeta->partialStartVv->getLast(0));
@@ -136,9 +136,9 @@ final class VersionMetadataTest extends LoroTestCase
         $doc1 = new LoroDoc();
         $doc1->setPeerId(1);
         $doc1->getText('text')->insert(0, '123');
-        $doc1->import($doc0->export(Export::updates(new VersionVector())));
+        $doc1->import($doc0->export(ExportMode::updates(new VersionVector())));
 
-        $snapshotMeta = decodeImportBlobMeta($doc1->export(Export::snapshot()), false);
+        $snapshotMeta = decodeImportBlobMeta($doc1->export(ExportMode::snapshot()), false);
 
         self::assertSame(2, $snapshotMeta->changeNum);
         self::assertSame(0, $snapshotMeta->partialEndVv->getLast(0));

@@ -4,14 +4,11 @@ declare(strict_types=1);
 
 namespace Loro\Tests;
 
-use Loro\Container;
-use Loro\Export;
-use Loro\Loro;
+use Loro\ExportMode;
 use Loro\LoroDoc;
 use Loro\LoroList;
 use Loro\LoroMap;
 use Loro\TreeParentId;
-use Loro\Value;
 use Loro\VersionVector;
 
 final class JsonEncodingTest extends LoroTestCase
@@ -25,30 +22,30 @@ final class JsonEncodingTest extends LoroTestCase
         $text->insert(0, '123');
 
         $map = $doc->getMap('map');
-        $subMap = Container::insertMapContainer($map, 'subMap', new LoroMap());
-        Container::insertMapValue($subMap, 'foo', 'bar');
+        $subMap = $map->setContainer('subMap', new LoroMap());
+        $subMap->set('foo', 'bar');
 
         $list = $doc->getList('list');
-        Container::pushListValue($list, 'foo');
-        Container::pushListValue($list, 'bird');
+        $list->push('foo');
+        $list->push('bird');
 
         $movableList = $doc->getMovableList('movableList');
-        Container::pushListValue($movableList, 'move list');
-        Container::pushListValue($movableList, 'bird');
+        $movableList->push('move list');
+        $movableList->push('bird');
         $movableList->mov(1, 0);
 
         $tree = $doc->getTree('tree');
         $root = $tree->create(TreeParentId::root());
         $child = $tree->create(TreeParentId::node($root));
-        Container::insertMapValue($tree->getMeta($child), 'tree', 'abc');
+        $tree->getMeta($child)->set('tree', 'abc');
 
-        Container::markText($text, 0, 3, 'bold', true);
+        $text->mark(0, 3, 'bold', true);
 
         $jsonUpdates = $doc->exportJsonUpdates(new VersionVector(), $doc->oplogVv());
         $doc2 = new LoroDoc();
         $doc2->importJsonUpdates($jsonUpdates);
 
-        self::assertEquals(Loro::toJson($doc), Loro::toJson($doc2));
+        self::assertEquals($doc->toJSON(), $doc2->toJSON());
     }
 
     public function testJsonUpdatesCanDecodeLegacyShape(): void
@@ -99,14 +96,14 @@ JSON;
             'text' => '123',
             'map' => ['subMap' => ['foo' => 'bar']],
             'list' => ['foo', 'bird'],
-        ], Loro::toJson($doc));
+        ], $doc->toJSON());
     }
 
     public function testExportJsonUpdatesUsesNullForNullValues(): void
     {
         $doc = new LoroDoc();
         $map = $doc->getMap('map');
-        Container::insertMapValue($map, 'key', null);
+        $map->set('key', null);
 
         $json = json_decode(
             $doc->exportJsonUpdates(new VersionVector(), $doc->oplogVv()),
@@ -157,18 +154,18 @@ JSON;
     {
         $doc = new LoroDoc();
         $map = $doc->getMap('map');
-        $subMap = Container::insertMapContainer($map, 'subMap', new LoroMap());
-        Container::insertMapValue($subMap, 'foo', 'bar');
+        $subMap = $map->setContainer('subMap', new LoroMap());
+        $subMap->set('foo', 'bar');
 
         $list = $doc->getList('list');
-        $subList = Container::insertListContainer($list, 0, new LoroList());
-        Container::pushListValue($subList, 'item1');
-        Container::pushListValue($subList, 'item2');
+        $subList = $list->insertContainer(0, new LoroList());
+        $subList->push('item1');
+        $subList->push('item2');
 
         self::assertEquals([
             'map' => ['subMap' => ['foo' => 'bar']],
             'list' => [['item1', 'item2']],
-        ], Loro::toJson($doc));
-        self::assertSame(['foo' => 'bar'], Value::toPhp($map->get('subMap')));
+        ], $doc->toJSON());
+        self::assertSame(['foo' => 'bar'], $map->get('subMap')?->toJSON());
     }
 }

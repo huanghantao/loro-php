@@ -1176,7 +1176,7 @@ UNIFFI_CDEF;
     public static function ffi(): \FFI
     {
         if (self::$ffi === null) {
-            self::$ffi = \FFI::cdef(self::CDEF, NativeLibrary::path());
+            self::$ffi = \FFI::cdef(self::CDEF, loroPhpNativeLibraryPath());
         }
         return self::$ffi;
     }
@@ -6307,9 +6307,33 @@ final class Awareness
         $result = UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_method_awareness_remove_outdated', $this->uniffiCloneHandle());
         return UniFFIRuntime::liftSerialized($result, ['sequence', 'u64']);
     }
-    public function setLocalState(LoroValueLike $value): void
+    public function setLocalState(mixed $value): void
     {
-        UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_method_awareness_set_local_state', $this->uniffiCloneHandle(), LoroValueLike::uniffiLower($value));
+        UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_method_awareness_set_local_state', $this->uniffiCloneHandle(), LoroValueLike::uniffiLower(UniFFILoroValueLikeAdapter::from($value)));
+    }
+
+    public function getLocalStateJSON(): mixed
+    {
+        $state = $this->getLocalState();
+
+        return $state === null ? null : UniFFILoroValueLikeAdapter::toPhp($state);
+    }
+
+    public function getState(int|string $peer): mixed
+    {
+        $info = $this->getAllStates()[$peer] ?? null;
+
+        return $info === null ? null : UniFFILoroValueLikeAdapter::toPhp($info->state);
+    }
+
+    public function getAllStatesJSON(): array
+    {
+        $result = [];
+        foreach ($this->getAllStates() as $peer => $info) {
+            $result[$peer] = UniFFILoroValueLikeAdapter::toPhp($info->state);
+        }
+
+        return $result;
     }
 }
 
@@ -6817,19 +6841,36 @@ final class EphemeralStore
     {
         UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_method_ephemeralstore_remove_outdated', $this->uniffiCloneHandle());
     }
-    public function set(string $key, LoroValueLike $value): void
+    public function set(string $key, mixed $value): void
     {
-        UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_method_ephemeralstore_set', $this->uniffiCloneHandle(), UniFFIRuntime::lowerString($key), LoroValueLike::uniffiLower($value));
+        UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_method_ephemeralstore_set', $this->uniffiCloneHandle(), UniFFIRuntime::lowerString($key), LoroValueLike::uniffiLower(UniFFILoroValueLikeAdapter::from($value)));
     }
-    public function subscribe(EphemeralSubscriber $listener): Subscription
+    public function subscribe(callable|EphemeralSubscriber $listener): Subscription
     {
-        $result = UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_method_ephemeralstore_subscribe', $this->uniffiCloneHandle(), EphemeralSubscriber::uniffiLower($listener));
+        $result = UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_method_ephemeralstore_subscribe', $this->uniffiCloneHandle(), EphemeralSubscriber::uniffiLower(UniFFICallbackHelper::ephemeralSubscriber($listener)));
         return Subscription::uniffiLift($result);
     }
-    public function subscribeLocalUpdate(LocalEphemeralListener $listener): Subscription
+    public function subscribeLocalUpdate(callable|LocalEphemeralListener $listener): Subscription
     {
-        $result = UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_method_ephemeralstore_subscribe_local_update', $this->uniffiCloneHandle(), LocalEphemeralListener::uniffiLower($listener));
+        $result = UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_method_ephemeralstore_subscribe_local_update', $this->uniffiCloneHandle(), LocalEphemeralListener::uniffiLower(UniFFICallbackHelper::localEphemeralListener($listener)));
         return Subscription::uniffiLift($result);
+    }
+
+    public function getJSON(string $key): mixed
+    {
+        $value = $this->get($key);
+
+        return $value === null ? null : UniFFILoroValueLikeAdapter::toPhp($value);
+    }
+
+    public function getAllStatesJSON(): array
+    {
+        $result = [];
+        foreach ($this->getAllStates() as $key => $value) {
+            $result[$key] = UniFFILoroValueLikeAdapter::toPhp($value);
+        }
+
+        return $result;
     }
 }
 
@@ -7412,10 +7453,15 @@ final class LoroCounter
         $result = UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_method_lorocounter_is_deleted', $this->uniffiCloneHandle());
         return UniFFIRuntime::liftBool($result);
     }
-    public function subscribe(Subscriber $subscriber): ?Subscription
+    public function subscribe(callable|Subscriber $subscriber): ?Subscription
     {
-        $result = UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_method_lorocounter_subscribe', $this->uniffiCloneHandle(), Subscriber::uniffiLower($subscriber));
+        $result = UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_method_lorocounter_subscribe', $this->uniffiCloneHandle(), Subscriber::uniffiLower(UniFFICallbackHelper::subscriber($subscriber)));
         return UniFFIRuntime::liftSerialized($result, ['optional', ['object', 'Subscription']]);
+    }
+
+    public function toJSON(): float|int
+    {
+        return UniFFILoroValueLikeAdapter::normalizeNumber($this->getValue());
     }
 }
 
@@ -7524,9 +7570,9 @@ final class LoroDoc
     {
         UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_method_lorodoc_config_default_text_style', $this->uniffiCloneHandle(), UniFFIRuntime::lowerSerialized($textStyle, ['optional', ['record', 'StyleConfig']]));
     }
-    public function configTextStyle(StyleConfigMap $textStyle): void
+    public function configTextStyle(array|StyleConfigMap $textStyle): void
     {
-        UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_method_lorodoc_config_text_style', $this->uniffiCloneHandle(), StyleConfigMap::uniffiLower($textStyle));
+        UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_method_lorodoc_config_text_style', $this->uniffiCloneHandle(), StyleConfigMap::uniffiLower(UniFFITextStyleHelper::styleConfigMap($textStyle)));
     }
     public function deleteRootContainer(ContainerId $cid): void
     {
@@ -7835,39 +7881,39 @@ final class LoroDoc
         $result = UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_method_lorodoc_state_vv', $this->uniffiCloneHandle());
         return VersionVector::uniffiLift($result);
     }
-    public function subscribe(ContainerId $containerId, Subscriber $subscriber): Subscription
+    public function subscribe(ContainerId $containerId, callable|Subscriber $subscriber): Subscription
     {
-        $result = UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_method_lorodoc_subscribe', $this->uniffiCloneHandle(), ContainerId::uniffiLower($containerId), Subscriber::uniffiLower($subscriber));
+        $result = UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_method_lorodoc_subscribe', $this->uniffiCloneHandle(), ContainerId::uniffiLower($containerId), Subscriber::uniffiLower(UniFFICallbackHelper::subscriber($subscriber)));
         return Subscription::uniffiLift($result);
     }
-    public function subscribeFirstCommitFromPeer(FirstCommitFromPeerCallback $callback): Subscription
+    public function subscribeFirstCommitFromPeer(callable|FirstCommitFromPeerCallback $callback): Subscription
     {
-        $result = UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_method_lorodoc_subscribe_first_commit_from_peer', $this->uniffiCloneHandle(), FirstCommitFromPeerCallback::uniffiLower($callback));
+        $result = UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_method_lorodoc_subscribe_first_commit_from_peer', $this->uniffiCloneHandle(), FirstCommitFromPeerCallback::uniffiLower(UniFFICallbackHelper::firstCommitFromPeerCallback($callback)));
         return Subscription::uniffiLift($result);
     }
-    public function subscribeJsonpath(string $path, JsonPathSubscriber $callback): Subscription
+    public function subscribeJsonpath(string $path, callable|JsonPathSubscriber $callback): Subscription
     {
-        $result = UniFFIRuntime::rustCallWithError('uniffi_loro_ffi_fn_method_lorodoc_subscribe_jsonpath', ['enum', 'LoroError'], $this->uniffiCloneHandle(), UniFFIRuntime::lowerString($path), JsonPathSubscriber::uniffiLower($callback));
+        $result = UniFFIRuntime::rustCallWithError('uniffi_loro_ffi_fn_method_lorodoc_subscribe_jsonpath', ['enum', 'LoroError'], $this->uniffiCloneHandle(), UniFFIRuntime::lowerString($path), JsonPathSubscriber::uniffiLower(UniFFICallbackHelper::jsonPathSubscriber($callback)));
         return Subscription::uniffiLift($result);
     }
-    public function subscribeLocalUpdate(LocalUpdateCallback $callback): Subscription
+    public function subscribeLocalUpdate(callable|LocalUpdateCallback $callback): Subscription
     {
-        $result = UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_method_lorodoc_subscribe_local_update', $this->uniffiCloneHandle(), LocalUpdateCallback::uniffiLower($callback));
+        $result = UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_method_lorodoc_subscribe_local_update', $this->uniffiCloneHandle(), LocalUpdateCallback::uniffiLower(UniFFICallbackHelper::localUpdateCallback($callback)));
         return Subscription::uniffiLift($result);
     }
-    public function subscribePreCommit(PreCommitCallback $callback): Subscription
+    public function subscribePreCommit(callable|PreCommitCallback $callback): Subscription
     {
-        $result = UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_method_lorodoc_subscribe_pre_commit', $this->uniffiCloneHandle(), PreCommitCallback::uniffiLower($callback));
+        $result = UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_method_lorodoc_subscribe_pre_commit', $this->uniffiCloneHandle(), PreCommitCallback::uniffiLower(UniFFICallbackHelper::preCommitCallback($callback)));
         return Subscription::uniffiLift($result);
     }
-    public function subscribeRoot(Subscriber $subscriber): Subscription
+    public function subscribeRoot(callable|Subscriber $subscriber): Subscription
     {
-        $result = UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_method_lorodoc_subscribe_root', $this->uniffiCloneHandle(), Subscriber::uniffiLower($subscriber));
+        $result = UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_method_lorodoc_subscribe_root', $this->uniffiCloneHandle(), Subscriber::uniffiLower(UniFFICallbackHelper::subscriber($subscriber)));
         return Subscription::uniffiLift($result);
     }
-    public function travelChangeAncestors(array $ids, ChangeAncestorsTraveler $f): void
+    public function travelChangeAncestors(array $ids, callable|ChangeAncestorsTraveler $f): void
     {
-        UniFFIRuntime::rustCallWithError('uniffi_loro_ffi_fn_method_lorodoc_travel_change_ancestors', ['enum', 'ChangeTravelError'], $this->uniffiCloneHandle(), UniFFIRuntime::lowerSerialized($ids, ['sequence', ['record', 'Id']]), ChangeAncestorsTraveler::uniffiLower($f));
+        UniFFIRuntime::rustCallWithError('uniffi_loro_ffi_fn_method_lorodoc_travel_change_ancestors', ['enum', 'ChangeTravelError'], $this->uniffiCloneHandle(), UniFFIRuntime::lowerSerialized($ids, ['sequence', ['record', 'Id']]), ChangeAncestorsTraveler::uniffiLower(UniFFICallbackHelper::changeAncestorsTraveler($f)));
     }
     public function tryGetCounter(string|ContainerId|ContainerIdLike $id): ?LoroCounter
     {
@@ -7903,6 +7949,25 @@ final class LoroDoc
     {
         $result = UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_method_lorodoc_vv_to_frontiers', $this->uniffiCloneHandle(), VersionVector::uniffiLower($vv));
         return Frontiers::uniffiLift($result);
+    }
+
+    public function toJSON(): mixed
+    {
+        return UniFFILoroValueLikeAdapter::toPhp($this->getDeepValue());
+    }
+
+    public function jsonpathToJSON(string $path): array
+    {
+        return array_map(UniFFILoroValueLikeAdapter::toPhp(...), $this->jsonpath($path));
+    }
+
+    public function exportJsonInIdSpanCommitted(IdSpan $idSpan): array
+    {
+        if ($this->getPendingTxnLen() > 0) {
+            $this->commit();
+        }
+
+        return $this->exportJsonInIdSpan($idSpan);
     }
 }
 
@@ -8009,9 +8074,9 @@ final class LoroList
         $result = UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_method_lorolist_id', $this->uniffiCloneHandle());
         return ContainerId::uniffiLift($result);
     }
-    public function insert(int $pos, LoroValueLike $v): void
+    public function insert(int $pos, mixed $v): void
     {
-        UniFFIRuntime::rustCallWithError('uniffi_loro_ffi_fn_method_lorolist_insert', ['enum', 'LoroError'], $this->uniffiCloneHandle(), UniFFIRuntime::lowerUInt32($pos), LoroValueLike::uniffiLower($v));
+        UniFFIRuntime::rustCallWithError('uniffi_loro_ffi_fn_method_lorolist_insert', ['enum', 'LoroError'], $this->uniffiCloneHandle(), UniFFIRuntime::lowerUInt32($pos), LoroValueLike::uniffiLower(UniFFILoroValueLikeAdapter::from($v)));
     }
     public function insertCounterContainer(int $pos, LoroCounter $child): LoroCounter
     {
@@ -8068,19 +8133,50 @@ final class LoroList
         $result = UniFFIRuntime::rustCallWithError('uniffi_loro_ffi_fn_method_lorolist_pop', ['enum', 'LoroError'], $this->uniffiCloneHandle());
         return UniFFIRuntime::liftSerialized($result, ['optional', ['enum', 'LoroValue']]);
     }
-    public function push(LoroValueLike $v): void
+    public function push(mixed $v): void
     {
-        UniFFIRuntime::rustCallWithError('uniffi_loro_ffi_fn_method_lorolist_push', ['enum', 'LoroError'], $this->uniffiCloneHandle(), LoroValueLike::uniffiLower($v));
+        UniFFIRuntime::rustCallWithError('uniffi_loro_ffi_fn_method_lorolist_push', ['enum', 'LoroError'], $this->uniffiCloneHandle(), LoroValueLike::uniffiLower(UniFFILoroValueLikeAdapter::from($v)));
     }
-    public function subscribe(Subscriber $subscriber): ?Subscription
+    public function subscribe(callable|Subscriber $subscriber): ?Subscription
     {
-        $result = UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_method_lorolist_subscribe', $this->uniffiCloneHandle(), Subscriber::uniffiLower($subscriber));
+        $result = UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_method_lorolist_subscribe', $this->uniffiCloneHandle(), Subscriber::uniffiLower(UniFFICallbackHelper::subscriber($subscriber)));
         return UniFFIRuntime::liftSerialized($result, ['optional', ['object', 'Subscription']]);
     }
     public function toVec(): array
     {
         $result = UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_method_lorolist_to_vec', $this->uniffiCloneHandle());
         return UniFFIRuntime::liftSerialized($result, ['sequence', ['enum', 'LoroValue']]);
+    }
+
+    public function insertContainer(int $pos, object $child): object
+    {
+        return UniFFIContainerHelper::insertListContainer($this, $pos, $child);
+    }
+
+    public function pushContainer(object $child): object
+    {
+        return UniFFIContainerHelper::pushListContainer($this, $child);
+    }
+
+    public function toJSON(): mixed
+    {
+        return UniFFILoroValueLikeAdapter::toPhp($this->getDeepValue());
+    }
+
+    public function toArray(): array
+    {
+        $items = [];
+        for ($i = 0; $i < $this->len(); $i++) {
+            $item = $this->get($i);
+            $items[] = $item === null ? null : UniFFILoroValueLikeAdapter::toPhp($item);
+        }
+
+        return $items;
+    }
+
+    public function length(): int
+    {
+        return $this->len();
     }
 }
 
@@ -8212,9 +8308,9 @@ final class LoroMap
         $result = UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_method_loromap_id', $this->uniffiCloneHandle());
         return ContainerId::uniffiLift($result);
     }
-    public function insert(string $key, LoroValueLike $v): void
+    public function insert(string $key, mixed $v): void
     {
-        UniFFIRuntime::rustCallWithError('uniffi_loro_ffi_fn_method_loromap_insert', ['enum', 'LoroError'], $this->uniffiCloneHandle(), UniFFIRuntime::lowerString($key), LoroValueLike::uniffiLower($v));
+        UniFFIRuntime::rustCallWithError('uniffi_loro_ffi_fn_method_loromap_insert', ['enum', 'LoroError'], $this->uniffiCloneHandle(), UniFFIRuntime::lowerString($key), LoroValueLike::uniffiLower(UniFFILoroValueLikeAdapter::from($v)));
     }
     public function insertCounterContainer(string $key, LoroCounter $child): LoroCounter
     {
@@ -8271,15 +8367,45 @@ final class LoroMap
         $result = UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_method_loromap_len', $this->uniffiCloneHandle());
         return UniFFIRuntime::liftUInt32($result);
     }
-    public function subscribe(Subscriber $subscriber): ?Subscription
+    public function subscribe(callable|Subscriber $subscriber): ?Subscription
     {
-        $result = UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_method_loromap_subscribe', $this->uniffiCloneHandle(), Subscriber::uniffiLower($subscriber));
+        $result = UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_method_loromap_subscribe', $this->uniffiCloneHandle(), Subscriber::uniffiLower(UniFFICallbackHelper::subscriber($subscriber)));
         return UniFFIRuntime::liftSerialized($result, ['optional', ['object', 'Subscription']]);
     }
     public function values(): array
     {
         $result = UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_method_loromap_values', $this->uniffiCloneHandle());
         return UniFFIRuntime::liftSerialized($result, ['sequence', ['object', 'ValueOrContainer']]);
+    }
+
+    public function set(string $key, mixed $value): void
+    {
+        $this->insert($key, $value);
+    }
+
+    public function setContainer(string $key, object $child): object
+    {
+        return UniFFIContainerHelper::insertMapContainer($this, $key, $child);
+    }
+
+    public function insertContainer(string $key, object $child): object
+    {
+        return $this->setContainer($key, $child);
+    }
+
+    public function getOrCreateContainer(string $key, object $child): object
+    {
+        return UniFFIContainerHelper::getOrCreateMapContainer($this, $key, $child);
+    }
+
+    public function toJSON(): mixed
+    {
+        return UniFFILoroValueLikeAdapter::toPhp($this->getDeepValue());
+    }
+
+    public function getShallowValue(): mixed
+    {
+        return UniFFILoroValueLikeAdapter::toPhp($this->getValue());
     }
 }
 
@@ -8396,9 +8522,9 @@ final class LoroMovableList
         $result = UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_method_loromovablelist_id', $this->uniffiCloneHandle());
         return ContainerId::uniffiLift($result);
     }
-    public function insert(int $pos, LoroValueLike $v): void
+    public function insert(int $pos, mixed $v): void
     {
-        UniFFIRuntime::rustCallWithError('uniffi_loro_ffi_fn_method_loromovablelist_insert', ['enum', 'LoroError'], $this->uniffiCloneHandle(), UniFFIRuntime::lowerUInt32($pos), LoroValueLike::uniffiLower($v));
+        UniFFIRuntime::rustCallWithError('uniffi_loro_ffi_fn_method_loromovablelist_insert', ['enum', 'LoroError'], $this->uniffiCloneHandle(), UniFFIRuntime::lowerUInt32($pos), LoroValueLike::uniffiLower(UniFFILoroValueLikeAdapter::from($v)));
     }
     public function insertCounterContainer(int $pos, LoroCounter $child): LoroCounter
     {
@@ -8459,13 +8585,13 @@ final class LoroMovableList
         $result = UniFFIRuntime::rustCallWithError('uniffi_loro_ffi_fn_method_loromovablelist_pop', ['enum', 'LoroError'], $this->uniffiCloneHandle());
         return UniFFIRuntime::liftSerialized($result, ['optional', ['object', 'ValueOrContainer']]);
     }
-    public function push(LoroValueLike $v): void
+    public function push(mixed $v): void
     {
-        UniFFIRuntime::rustCallWithError('uniffi_loro_ffi_fn_method_loromovablelist_push', ['enum', 'LoroError'], $this->uniffiCloneHandle(), LoroValueLike::uniffiLower($v));
+        UniFFIRuntime::rustCallWithError('uniffi_loro_ffi_fn_method_loromovablelist_push', ['enum', 'LoroError'], $this->uniffiCloneHandle(), LoroValueLike::uniffiLower(UniFFILoroValueLikeAdapter::from($v)));
     }
-    public function set(int $pos, LoroValueLike $value): void
+    public function set(int $pos, mixed $value): void
     {
-        UniFFIRuntime::rustCallWithError('uniffi_loro_ffi_fn_method_loromovablelist_set', ['enum', 'LoroError'], $this->uniffiCloneHandle(), UniFFIRuntime::lowerUInt32($pos), LoroValueLike::uniffiLower($value));
+        UniFFIRuntime::rustCallWithError('uniffi_loro_ffi_fn_method_loromovablelist_set', ['enum', 'LoroError'], $this->uniffiCloneHandle(), UniFFIRuntime::lowerUInt32($pos), LoroValueLike::uniffiLower(UniFFILoroValueLikeAdapter::from($value)));
     }
     public function setCounterContainer(int $pos, LoroCounter $child): LoroCounter
     {
@@ -8497,15 +8623,51 @@ final class LoroMovableList
         $result = UniFFIRuntime::rustCallWithError('uniffi_loro_ffi_fn_method_loromovablelist_set_tree_container', ['enum', 'LoroError'], $this->uniffiCloneHandle(), UniFFIRuntime::lowerUInt32($pos), LoroTree::uniffiLower($child));
         return LoroTree::uniffiLift($result);
     }
-    public function subscribe(Subscriber $subscriber): ?Subscription
+    public function subscribe(callable|Subscriber $subscriber): ?Subscription
     {
-        $result = UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_method_loromovablelist_subscribe', $this->uniffiCloneHandle(), Subscriber::uniffiLower($subscriber));
+        $result = UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_method_loromovablelist_subscribe', $this->uniffiCloneHandle(), Subscriber::uniffiLower(UniFFICallbackHelper::subscriber($subscriber)));
         return UniFFIRuntime::liftSerialized($result, ['optional', ['object', 'Subscription']]);
     }
     public function toVec(): array
     {
         $result = UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_method_loromovablelist_to_vec', $this->uniffiCloneHandle());
         return UniFFIRuntime::liftSerialized($result, ['sequence', ['enum', 'LoroValue']]);
+    }
+
+    public function insertContainer(int $pos, object $child): object
+    {
+        return UniFFIContainerHelper::insertListContainer($this, $pos, $child);
+    }
+
+    public function pushContainer(object $child): object
+    {
+        return UniFFIContainerHelper::pushListContainer($this, $child);
+    }
+
+    public function setContainer(int $pos, object $child): object
+    {
+        return UniFFIContainerHelper::setMovableListContainer($this, $pos, $child);
+    }
+
+    public function toJSON(): mixed
+    {
+        return UniFFILoroValueLikeAdapter::toPhp($this->getDeepValue());
+    }
+
+    public function toArray(): array
+    {
+        $items = [];
+        for ($i = 0; $i < $this->len(); $i++) {
+            $item = $this->get($i);
+            $items[] = $item === null ? null : UniFFILoroValueLikeAdapter::toPhp($item);
+        }
+
+        return $items;
+    }
+
+    public function length(): int
+    {
+        return $this->len();
     }
 }
 
@@ -8662,17 +8824,17 @@ final class LoroText
         $result = UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_method_lorotext_len_utf8', $this->uniffiCloneHandle());
         return UniFFIRuntime::liftUInt32($result);
     }
-    public function mark(int $from, int $to, string $key, LoroValueLike $value): void
+    public function mark(int $from, int $to, string $key, mixed $value): void
     {
-        UniFFIRuntime::rustCallWithError('uniffi_loro_ffi_fn_method_lorotext_mark', ['enum', 'LoroError'], $this->uniffiCloneHandle(), UniFFIRuntime::lowerUInt32($from), UniFFIRuntime::lowerUInt32($to), UniFFIRuntime::lowerString($key), LoroValueLike::uniffiLower($value));
+        UniFFIRuntime::rustCallWithError('uniffi_loro_ffi_fn_method_lorotext_mark', ['enum', 'LoroError'], $this->uniffiCloneHandle(), UniFFIRuntime::lowerUInt32($from), UniFFIRuntime::lowerUInt32($to), UniFFIRuntime::lowerString($key), LoroValueLike::uniffiLower(UniFFILoroValueLikeAdapter::from($value)));
     }
-    public function markUtf16(int $from, int $to, string $key, LoroValueLike $value): void
+    public function markUtf16(int $from, int $to, string $key, mixed $value): void
     {
-        UniFFIRuntime::rustCallWithError('uniffi_loro_ffi_fn_method_lorotext_mark_utf16', ['enum', 'LoroError'], $this->uniffiCloneHandle(), UniFFIRuntime::lowerUInt32($from), UniFFIRuntime::lowerUInt32($to), UniFFIRuntime::lowerString($key), LoroValueLike::uniffiLower($value));
+        UniFFIRuntime::rustCallWithError('uniffi_loro_ffi_fn_method_lorotext_mark_utf16', ['enum', 'LoroError'], $this->uniffiCloneHandle(), UniFFIRuntime::lowerUInt32($from), UniFFIRuntime::lowerUInt32($to), UniFFIRuntime::lowerString($key), LoroValueLike::uniffiLower(UniFFILoroValueLikeAdapter::from($value)));
     }
-    public function markUtf8(int $from, int $to, string $key, LoroValueLike $value): void
+    public function markUtf8(int $from, int $to, string $key, mixed $value): void
     {
-        UniFFIRuntime::rustCallWithError('uniffi_loro_ffi_fn_method_lorotext_mark_utf8', ['enum', 'LoroError'], $this->uniffiCloneHandle(), UniFFIRuntime::lowerUInt32($from), UniFFIRuntime::lowerUInt32($to), UniFFIRuntime::lowerString($key), LoroValueLike::uniffiLower($value));
+        UniFFIRuntime::rustCallWithError('uniffi_loro_ffi_fn_method_lorotext_mark_utf8', ['enum', 'LoroError'], $this->uniffiCloneHandle(), UniFFIRuntime::lowerUInt32($from), UniFFIRuntime::lowerUInt32($to), UniFFIRuntime::lowerString($key), LoroValueLike::uniffiLower(UniFFILoroValueLikeAdapter::from($value)));
     }
     public function pushStr(string $s): void
     {
@@ -8702,9 +8864,9 @@ final class LoroText
     {
         UniFFIRuntime::rustCallWithError('uniffi_loro_ffi_fn_method_lorotext_splice_utf16', ['enum', 'LoroError'], $this->uniffiCloneHandle(), UniFFIRuntime::lowerUInt32($pos), UniFFIRuntime::lowerUInt32($len), UniFFIRuntime::lowerString($s));
     }
-    public function subscribe(Subscriber $subscriber): ?Subscription
+    public function subscribe(callable|Subscriber $subscriber): ?Subscription
     {
-        $result = UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_method_lorotext_subscribe', $this->uniffiCloneHandle(), Subscriber::uniffiLower($subscriber));
+        $result = UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_method_lorotext_subscribe', $this->uniffiCloneHandle(), Subscriber::uniffiLower(UniFFICallbackHelper::subscriber($subscriber)));
         return UniFFIRuntime::liftSerialized($result, ['optional', ['object', 'Subscription']]);
     }
     public function toDelta(): array
@@ -8727,6 +8889,31 @@ final class LoroText
     public function updateByLine(string $s, UpdateOptions $options): void
     {
         UniFFIRuntime::rustCallWithError('uniffi_loro_ffi_fn_method_lorotext_update_by_line', ['enum', 'UpdateTimeoutError'], $this->uniffiCloneHandle(), UniFFIRuntime::lowerString($s), UpdateOptions::uniffiLower($options));
+    }
+
+    public function toString(): string
+    {
+        return $this->slice(0, $this->lenUnicode());
+    }
+
+    public function toJSON(): string
+    {
+        return $this->toString();
+    }
+
+    public function getShallowValue(): string
+    {
+        return $this->toString();
+    }
+
+    public function toDeltaJSON(): array
+    {
+        return UniFFITextStyleHelper::textDeltaToPhp($this->toDelta());
+    }
+
+    public function sliceDeltaJSON(int $startIndex, int $endIndex, PosType $posType): array
+    {
+        return UniFFITextStyleHelper::textDeltaToPhp($this->sliceDelta($startIndex, $endIndex, $posType));
     }
 }
 
@@ -8913,10 +9100,20 @@ final class LoroTree
         $result = UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_method_lorotree_roots', $this->uniffiCloneHandle());
         return UniFFIRuntime::liftSerialized($result, ['sequence', ['record', 'TreeId']]);
     }
-    public function subscribe(Subscriber $subscriber): ?Subscription
+    public function subscribe(callable|Subscriber $subscriber): ?Subscription
     {
-        $result = UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_method_lorotree_subscribe', $this->uniffiCloneHandle(), Subscriber::uniffiLower($subscriber));
+        $result = UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_method_lorotree_subscribe', $this->uniffiCloneHandle(), Subscriber::uniffiLower(UniFFICallbackHelper::subscriber($subscriber)));
         return UniFFIRuntime::liftSerialized($result, ['optional', ['object', 'Subscription']]);
+    }
+
+    public function toJSON(): mixed
+    {
+        return UniFFILoroValueLikeAdapter::toPhp($this->getValue());
+    }
+
+    public function getValueWithMetaJSON(): mixed
+    {
+        return UniFFILoroValueLikeAdapter::toPhp($this->getValueWithMeta());
     }
 }
 
@@ -9586,6 +9783,44 @@ final class UndoManager
         $result = UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_method_undomanager_undo_count', $this->uniffiCloneHandle());
         return UniFFIRuntime::liftUInt32($result);
     }
+
+    public function setOnPopHandler(callable|OnPop|null $callback): void
+    {
+        $this->setOnPop(UniFFICallbackHelper::onPop($callback));
+    }
+
+    public function setOnPushHandler(callable|OnPush|null $callback): void
+    {
+        $this->setOnPush(UniFFICallbackHelper::onPush($callback));
+    }
+
+    public function topUndoValueJSON(): mixed
+    {
+        $value = $this->topUndoValue();
+
+        return $value === null ? null : UniFFILoroValueLikeAdapter::toPhp($value);
+    }
+
+    public function topRedoValueJSON(): mixed
+    {
+        $value = $this->topRedoValue();
+
+        return $value === null ? null : UniFFILoroValueLikeAdapter::toPhp($value);
+    }
+
+    public function topUndoMetaValueJSON(): mixed
+    {
+        $meta = $this->topUndoMeta();
+
+        return $meta === null ? null : UniFFILoroValueLikeAdapter::toPhp($meta->value);
+    }
+
+    public function topRedoMetaValueJSON(): mixed
+    {
+        $meta = $this->topRedoMeta();
+
+        return $meta === null ? null : UniFFILoroValueLikeAdapter::toPhp($meta->value);
+    }
 }
 
 
@@ -9765,6 +10000,16 @@ final class ValueOrContainer
     {
         $result = UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_method_valueorcontainer_is_value', $this->uniffiCloneHandle());
         return UniFFIRuntime::liftBool($result);
+    }
+
+    public function toJSON(): mixed
+    {
+        return UniFFILoroValueLikeAdapter::toPhp($this);
+    }
+
+    public function toPhp(): mixed
+    {
+        return $this->toJSON();
     }
 }
 
@@ -10016,6 +10261,94 @@ final class VersionVector
 }
 
 
+function loroPhpNativeLibraryPath(): string
+{
+    $configuredPath = loroPhpConfiguredNativeLibraryPath();
+    if ($configuredPath !== null) {
+        return $configuredPath;
+    }
+
+    foreach (loroPhpNativeLibraryCandidatePaths() as $candidate) {
+        if (is_file($candidate)) {
+            return $candidate;
+        }
+    }
+
+    throw new \RuntimeException(sprintf(
+        'Unable to locate the loro-php native library. Set %s to the absolute path of %s, or place it in one of: %s',
+        'LORO_PHP_LIBRARY',
+        loroPhpNativeLibraryFileName(),
+        implode(', ', loroPhpNativeLibraryCandidatePaths()),
+    ));
+}
+
+function loroPhpConfiguredNativeLibraryPath(): ?string
+{
+    $path = getenv('LORO_PHP_LIBRARY');
+    if (!is_string($path) || trim($path) === '') {
+        return null;
+    }
+
+    if (!is_file($path)) {
+        throw new \RuntimeException(sprintf(
+            '%s is set to "%s", but that file does not exist.',
+            'LORO_PHP_LIBRARY',
+            $path,
+        ));
+    }
+
+    return $path;
+}
+
+/**
+ * @return list<string>
+ */
+function loroPhpNativeLibraryCandidatePaths(): array
+{
+    $root = dirname(__DIR__);
+    $fileName = loroPhpNativeLibraryFileName();
+    $platform = loroPhpNativeLibraryPlatformName();
+    $arch = loroPhpNativeLibraryArchitectureName();
+
+    return [
+        loroPhpJoinNativeLibraryPath($root, 'native', "{$platform}-{$arch}", $fileName),
+        loroPhpJoinNativeLibraryPath($root, 'native', $fileName),
+    ];
+}
+
+function loroPhpNativeLibraryFileName(): string
+{
+    return match (PHP_OS_FAMILY) {
+        'Darwin' => 'libloro_php.dylib',
+        'Windows' => 'loro_php.dll',
+        default => 'libloro_php.so',
+    };
+}
+
+function loroPhpNativeLibraryPlatformName(): string
+{
+    return match (PHP_OS_FAMILY) {
+        'Darwin' => 'darwin',
+        'Windows' => 'windows',
+        'Linux' => 'linux',
+        default => strtolower(PHP_OS_FAMILY),
+    };
+}
+
+function loroPhpNativeLibraryArchitectureName(): string
+{
+    return match (strtolower(php_uname('m'))) {
+        'amd64', 'x86_64' => 'x64',
+        'aarch64', 'arm64' => 'arm64',
+        default => strtolower(php_uname('m')),
+    };
+}
+
+function loroPhpJoinNativeLibraryPath(string ...$parts): string
+{
+    return implode(DIRECTORY_SEPARATOR, $parts);
+}
+
 final class UniFFIContainerIdLikeAdapter extends ContainerIdLike
 {
     public static function from(string|ContainerId|ContainerIdLike $value): ContainerIdLike
@@ -10034,5 +10367,567 @@ final class UniFFIContainerIdLikeAdapter extends ContainerIdLike
         return $this->id instanceof ContainerId
             ? $this->id
             : ContainerId::root($this->id, $ty);
+    }
+}
+
+final class UniFFITextStyleHelper
+{
+    public static function styleConfigMap(array|StyleConfigMap $styles): StyleConfigMap
+    {
+        if ($styles instanceof StyleConfigMap) {
+            return $styles;
+        }
+
+        $config = new StyleConfigMap();
+        foreach ($styles as $name => $expand) {
+            $config->insert((string) $name, new StyleConfig(self::expandType($expand)));
+        }
+
+        return $config;
+    }
+
+    public static function textDeltaToPhp(array $delta): array
+    {
+        return array_map(static function (TextDelta $item): array {
+            return match ($item->variant) {
+                'Retain' => self::deltaItem('retain', $item->fields['retain'], $item->fields['attributes'] ?? null),
+                'Insert' => self::deltaItem('insert', $item->fields['insert'], $item->fields['attributes'] ?? null),
+                'Delete' => ['delete' => $item->fields['delete']],
+                default => throw new \UnexpectedValueException('Unexpected TextDelta variant ' . $item->variant),
+            };
+        }, $delta);
+    }
+
+    private static function expandType(string|ExpandType $expand): ExpandType
+    {
+        if ($expand instanceof ExpandType) {
+            return $expand;
+        }
+
+        return match ($expand) {
+            'before' => ExpandType::before(),
+            'after' => ExpandType::after(),
+            'both' => ExpandType::both(),
+            'none' => ExpandType::none(),
+            default => throw new \InvalidArgumentException('Unknown text style expand type: ' . $expand),
+        };
+    }
+
+    private static function deltaItem(string $key, int|string $value, ?array $attributes): array
+    {
+        $item = [$key => $value];
+        if ($attributes !== null && $attributes !== []) {
+            $item['attributes'] = UniFFILoroValueLikeAdapter::toPhp(LoroValue::map($attributes));
+        }
+
+        return $item;
+    }
+}
+
+final class BinaryValue
+{
+    public function __construct(public string $bytes) {}
+}
+
+final class UniFFILoroValueLikeAdapter extends LoroValueLike
+{
+    public static function from(mixed $value): LoroValueLike
+    {
+        return $value instanceof LoroValueLike
+            ? $value
+            : new self(self::toLoroValue($value));
+    }
+
+    public static function toLoroValue(mixed $value): LoroValue
+    {
+        if ($value instanceof LoroValueLike) {
+            return $value->asLoroValue();
+        }
+
+        if ($value instanceof LoroValue) {
+            return $value;
+        }
+
+        if ($value instanceof BinaryValue) {
+            return LoroValue::binary($value->bytes);
+        }
+
+        if ($value instanceof ContainerId) {
+            return LoroValue::container($value);
+        }
+
+        if ($containerId = self::containerIdFromObject($value)) {
+            return LoroValue::container($containerId);
+        }
+
+        return match (true) {
+            $value === null => LoroValue::null(),
+            is_bool($value) => LoroValue::bool($value),
+            is_int($value) => LoroValue::i64($value),
+            is_float($value) => LoroValue::double($value),
+            is_string($value) => LoroValue::string($value),
+            is_array($value) => self::arrayToLoroValue($value),
+            default => throw new \InvalidArgumentException(
+                'Cannot convert ' . get_debug_type($value) . ' to LoroValue'
+            ),
+        };
+    }
+
+    public static function toPhp(LoroValue|ValueOrContainer $value): mixed
+    {
+        if ($value instanceof ValueOrContainer) {
+            return self::valueOrContainerToPhp($value);
+        }
+
+        return match ($value->variant) {
+            'Null' => null,
+            'Bool', 'String' => $value->fields['value'],
+            'Double' => $value->fields['value'],
+            'I64' => (int) $value->fields['value'],
+            'Binary' => new BinaryValue($value->fields['value']),
+            'List' => array_map(self::toPhp(...), $value->fields['value']),
+            'Map' => self::mapToPhp($value->fields['value']),
+            'Container' => $value->fields['value'],
+            default => throw new \UnexpectedValueException(
+                'Cannot convert LoroValue variant ' . $value->variant . ' to PHP'
+            ),
+        };
+    }
+
+    public static function normalizeNumber(float $value): float|int
+    {
+        $intValue = (int) $value;
+
+        return (float) $intValue === $value ? $intValue : $value;
+    }
+
+    private function __construct(private LoroValue $value) {}
+
+    public function asLoroValue(): LoroValue
+    {
+        return $this->value;
+    }
+
+    private static function arrayToLoroValue(array $value): LoroValue
+    {
+        return array_is_list($value)
+            ? self::listToLoroValue($value)
+            : self::mapToLoroValue($value);
+    }
+
+    private static function listToLoroValue(array $value): LoroValue
+    {
+        return LoroValue::list_(array_map(self::toLoroValue(...), $value));
+    }
+
+    private static function mapToLoroValue(array $value): LoroValue
+    {
+        $map = [];
+        foreach ($value as $key => $item) {
+            $map[(string) $key] = self::toLoroValue($item);
+        }
+
+        return LoroValue::map($map);
+    }
+
+    private static function mapToPhp(array $value): array
+    {
+        $map = [];
+        foreach ($value as $key => $item) {
+            $map[$key] = self::toPhp($item);
+        }
+
+        return $map;
+    }
+
+    private static function valueOrContainerToPhp(ValueOrContainer $value): mixed
+    {
+        if (($loroValue = $value->asValue()) !== null) {
+            return self::toPhp($loroValue);
+        }
+
+        if (($text = $value->asLoroText()) !== null) {
+            return $text->toString();
+        }
+
+        if (($counter = $value->asLoroCounter()) !== null) {
+            return self::normalizeNumber($counter->getValue());
+        }
+
+        if (($list = $value->asLoroList()) !== null) {
+            return self::toPhp($list->getDeepValue());
+        }
+
+        if (($movableList = $value->asLoroMovableList()) !== null) {
+            return self::toPhp($movableList->getDeepValue());
+        }
+
+        if (($map = $value->asLoroMap()) !== null) {
+            return self::toPhp($map->getDeepValue());
+        }
+
+        if (($tree = $value->asLoroTree()) !== null) {
+            return self::toPhp($tree->getValue());
+        }
+
+        if (($containerId = $value->asContainer()) !== null) {
+            return $containerId;
+        }
+
+        if (($unknown = $value->asLoroUnknown()) !== null) {
+            return $unknown->id();
+        }
+
+        throw new \UnexpectedValueException('Cannot convert empty ValueOrContainer to PHP');
+    }
+
+    private static function containerIdFromObject(mixed $value): ?ContainerId
+    {
+        return match (true) {
+            $value instanceof LoroText,
+            $value instanceof LoroMap,
+            $value instanceof LoroList,
+            $value instanceof LoroMovableList,
+            $value instanceof LoroTree,
+            $value instanceof LoroCounter,
+            $value instanceof LoroUnknown => $value->id(),
+            default => null,
+        };
+    }
+}
+
+final class UniFFIContainerHelper
+{
+    public static function insertMapContainer(LoroMap $map, string $key, object $child): object
+    {
+        self::assertChildCanBeInserted($map->doc(), $child);
+
+        return match (true) {
+            $child instanceof LoroCounter => $map->insertCounterContainer($key, $child),
+            $child instanceof LoroList => $map->insertListContainer($key, $child),
+            $child instanceof LoroMap => $map->insertMapContainer($key, $child),
+            $child instanceof LoroMovableList => $map->insertMovableListContainer($key, $child),
+            $child instanceof LoroText => $map->insertTextContainer($key, $child),
+            $child instanceof LoroTree => $map->insertTreeContainer($key, $child),
+            default => self::unsupportedChild($child),
+        };
+    }
+
+    public static function getOrCreateMapContainer(LoroMap $map, string $key, object $child): object
+    {
+        self::assertChildCanBeInserted($map->doc(), $child);
+
+        return match (true) {
+            $child instanceof LoroCounter => $map->getOrCreateCounterContainer($key, $child),
+            $child instanceof LoroList => $map->getOrCreateListContainer($key, $child),
+            $child instanceof LoroMap => $map->getOrCreateMapContainer($key, $child),
+            $child instanceof LoroMovableList => $map->getOrCreateMovableListContainer($key, $child),
+            $child instanceof LoroText => $map->getOrCreateTextContainer($key, $child),
+            $child instanceof LoroTree => $map->getOrCreateTreeContainer($key, $child),
+            default => self::unsupportedChild($child),
+        };
+    }
+
+    public static function insertListContainer(LoroList|LoroMovableList $list, int $pos, object $child): object
+    {
+        self::assertChildCanBeInserted($list->doc(), $child);
+
+        return match (true) {
+            $child instanceof LoroCounter => $list->insertCounterContainer($pos, $child),
+            $child instanceof LoroList => $list->insertListContainer($pos, $child),
+            $child instanceof LoroMap => $list->insertMapContainer($pos, $child),
+            $child instanceof LoroMovableList => $list->insertMovableListContainer($pos, $child),
+            $child instanceof LoroText => $list->insertTextContainer($pos, $child),
+            $child instanceof LoroTree => $list->insertTreeContainer($pos, $child),
+            default => self::unsupportedChild($child),
+        };
+    }
+
+    public static function pushListContainer(LoroList|LoroMovableList $list, object $child): object
+    {
+        return self::insertListContainer($list, $list->len(), $child);
+    }
+
+    public static function setMovableListContainer(LoroMovableList $list, int $pos, object $child): object
+    {
+        self::assertChildCanBeInserted($list->doc(), $child);
+
+        return match (true) {
+            $child instanceof LoroCounter => $list->setCounterContainer($pos, $child),
+            $child instanceof LoroList => $list->setListContainer($pos, $child),
+            $child instanceof LoroMap => $list->setMapContainer($pos, $child),
+            $child instanceof LoroMovableList => $list->setMovableListContainer($pos, $child),
+            $child instanceof LoroText => $list->setTextContainer($pos, $child),
+            $child instanceof LoroTree => $list->setTreeContainer($pos, $child),
+            default => self::unsupportedChild($child),
+        };
+    }
+
+    private static function unsupportedChild(object $child): never
+    {
+        throw new \InvalidArgumentException(
+            'Expected a Loro container child, got ' . get_debug_type($child)
+        );
+    }
+
+    private static function assertChildCanBeInserted(?LoroDoc $parentDoc, object $child): void
+    {
+        $childInfo = self::attachedChildInfo($child);
+        if ($childInfo === null) {
+            return;
+        }
+
+        [$childId, $childDoc] = $childInfo;
+        if (
+            $parentDoc !== null
+            && $childDoc !== null
+            && $parentDoc->peerId() === $childDoc->peerId()
+            && $parentDoc->hasContainer($childId)
+        ) {
+            return;
+        }
+
+        throw new \InvalidArgumentException('Cannot insert a container attached to another document');
+    }
+
+    /**
+     * @return array{ContainerId, LoroDoc|null}|null
+     */
+    private static function attachedChildInfo(object $child): ?array
+    {
+        return match (true) {
+            $child instanceof LoroCounter => $child->isAttached() ? [$child->id(), $child->doc()] : null,
+            $child instanceof LoroList => $child->isAttached() ? [$child->id(), $child->doc()] : null,
+            $child instanceof LoroMap => $child->isAttached() ? [$child->id(), $child->doc()] : null,
+            $child instanceof LoroMovableList => $child->isAttached() ? [$child->id(), $child->doc()] : null,
+            $child instanceof LoroText => $child->isAttached() ? [$child->id(), $child->doc()] : null,
+            $child instanceof LoroTree => $child->isAttached() ? [$child->id(), $child->doc()] : null,
+            default => null,
+        };
+    }
+}
+
+final class UniFFICallbackHelper
+{
+    public static function subscriber(callable|Subscriber $callback): Subscriber
+    {
+        return $callback instanceof Subscriber ? $callback : new UniFFISubscriberCallback($callback);
+    }
+
+    public static function localUpdateCallback(callable|LocalUpdateCallback $callback): LocalUpdateCallback
+    {
+        return $callback instanceof LocalUpdateCallback ? $callback : new UniFFILocalUpdateCallback($callback);
+    }
+
+    public static function firstCommitFromPeerCallback(
+        callable|FirstCommitFromPeerCallback $callback
+    ): FirstCommitFromPeerCallback {
+        return $callback instanceof FirstCommitFromPeerCallback
+            ? $callback
+            : new UniFFIFirstCommitFromPeerCallback($callback);
+    }
+
+    public static function preCommitCallback(callable|PreCommitCallback $callback): PreCommitCallback
+    {
+        return $callback instanceof PreCommitCallback ? $callback : new UniFFIPreCommitCallback($callback);
+    }
+
+    public static function jsonPathSubscriber(callable|JsonPathSubscriber $callback): JsonPathSubscriber
+    {
+        return $callback instanceof JsonPathSubscriber ? $callback : new UniFFIJsonPathSubscriberCallback($callback);
+    }
+
+    public static function ephemeralSubscriber(callable|EphemeralSubscriber $callback): EphemeralSubscriber
+    {
+        return $callback instanceof EphemeralSubscriber ? $callback : new UniFFIEphemeralSubscriberCallback($callback);
+    }
+
+    public static function localEphemeralListener(
+        callable|LocalEphemeralListener $callback
+    ): LocalEphemeralListener {
+        return $callback instanceof LocalEphemeralListener
+            ? $callback
+            : new UniFFILocalEphemeralListenerCallback($callback);
+    }
+
+    public static function changeAncestorsTraveler(
+        callable|ChangeAncestorsTraveler $callback
+    ): ChangeAncestorsTraveler {
+        return $callback instanceof ChangeAncestorsTraveler
+            ? $callback
+            : new UniFFIChangeAncestorsTravelerCallback($callback);
+    }
+
+    public static function onPop(callable|OnPop|null $callback): ?OnPop
+    {
+        return $callback === null || $callback instanceof OnPop ? $callback : new UniFFIOnPopCallback($callback);
+    }
+
+    public static function onPush(callable|OnPush|null $callback): ?OnPush
+    {
+        return $callback === null || $callback instanceof OnPush ? $callback : new UniFFIOnPushCallback($callback);
+    }
+}
+
+final class UniFFISubscriberCallback extends Subscriber
+{
+    private mixed $callback;
+
+    public function __construct(callable $callback)
+    {
+        $this->callback = $callback;
+    }
+
+    public function onDiff(DiffEvent $diff): void
+    {
+        ($this->callback)($diff);
+    }
+}
+
+final class UniFFILocalUpdateCallback extends LocalUpdateCallback
+{
+    private mixed $callback;
+
+    public function __construct(callable $callback)
+    {
+        $this->callback = $callback;
+    }
+
+    public function onLocalUpdate(string $update): void
+    {
+        ($this->callback)($update);
+    }
+}
+
+final class UniFFIFirstCommitFromPeerCallback extends FirstCommitFromPeerCallback
+{
+    private mixed $callback;
+
+    public function __construct(callable $callback)
+    {
+        $this->callback = $callback;
+    }
+
+    public function onFirstCommitFromPeer(FirstCommitFromPeerPayload $payload): void
+    {
+        ($this->callback)($payload);
+    }
+}
+
+final class UniFFIPreCommitCallback extends PreCommitCallback
+{
+    private mixed $callback;
+
+    public function __construct(callable $callback)
+    {
+        $this->callback = $callback;
+    }
+
+    public function onPreCommit(PreCommitCallbackPayload $payload): void
+    {
+        ($this->callback)($payload);
+    }
+}
+
+final class UniFFIJsonPathSubscriberCallback extends JsonPathSubscriber
+{
+    private mixed $callback;
+
+    public function __construct(callable $callback)
+    {
+        $this->callback = $callback;
+    }
+
+    public function onJsonpathChanged(): void
+    {
+        ($this->callback)();
+    }
+}
+
+final class UniFFIEphemeralSubscriberCallback extends EphemeralSubscriber
+{
+    private mixed $callback;
+
+    public function __construct(callable $callback)
+    {
+        $this->callback = $callback;
+    }
+
+    public function onEphemeralEvent(EphemeralStoreEvent $event): void
+    {
+        ($this->callback)($event);
+    }
+}
+
+final class UniFFILocalEphemeralListenerCallback extends LocalEphemeralListener
+{
+    private mixed $callback;
+
+    public function __construct(callable $callback)
+    {
+        $this->callback = $callback;
+    }
+
+    public function onEphemeralUpdate(string $update): void
+    {
+        ($this->callback)($update);
+    }
+}
+
+final class UniFFIChangeAncestorsTravelerCallback extends ChangeAncestorsTraveler
+{
+    private mixed $callback;
+
+    public function __construct(callable $callback)
+    {
+        $this->callback = $callback;
+    }
+
+    public function travel(ChangeMeta $change): bool
+    {
+        return (bool) ($this->callback)($change);
+    }
+}
+
+final class UniFFIOnPopCallback extends OnPop
+{
+    private mixed $callback;
+
+    public function __construct(callable $callback)
+    {
+        $this->callback = $callback;
+    }
+
+    public function onPop(UndoOrRedo $undoOrRedo, CounterSpan $span, UndoItemMeta $undoMeta): void
+    {
+        ($this->callback)($undoOrRedo, $span, $undoMeta);
+    }
+}
+
+final class UniFFIOnPushCallback extends OnPush
+{
+    private mixed $callback;
+
+    public function __construct(callable $callback)
+    {
+        $this->callback = $callback;
+    }
+
+    public function onPush(UndoOrRedo $undoOrRedo, CounterSpan $span, ?DiffEvent $diffEvent): UndoItemMeta
+    {
+        $result = ($this->callback)($undoOrRedo, $span, $diffEvent);
+
+        if ($result instanceof UndoItemMeta) {
+            return $result;
+        }
+
+        if (is_array($result) && array_key_exists('value', $result)) {
+            return new UndoItemMeta(
+                UniFFILoroValueLikeAdapter::toLoroValue($result['value']),
+                $result['cursors'] ?? []
+            );
+        }
+
+        return new UndoItemMeta(UniFFILoroValueLikeAdapter::toLoroValue($result), []);
     }
 }

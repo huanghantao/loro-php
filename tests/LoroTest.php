@@ -4,12 +4,9 @@ declare(strict_types=1);
 
 namespace Loro\Tests;
 
-use Loro\Container;
 use Loro\DiffEvent;
-use Loro\Events;
-use Loro\Export;
+use Loro\ExportMode;
 use Loro\Frontiers;
-use Loro\Loro;
 use Loro\LoroDoc;
 use Loro\LoroList;
 use Loro\LoroMovableList;
@@ -26,12 +23,12 @@ final class LoroTest extends LoroTestCase
     {
         $doc = new LoroDoc();
         $num = 0;
-        $sub = Events::subscribeRoot($doc, static function (DiffEvent $event) use (&$num): void {
+        $sub = $doc->subscribeRoot(static function (DiffEvent $event) use (&$num): void {
             $num++;
         });
 
         $list = $doc->getList('list');
-        Container::insertListValue($list, 0, 123);
+        $list->insert(0, 123);
         $doc->commit();
         $sub->detach();
 
@@ -43,14 +40,14 @@ final class LoroTest extends LoroTestCase
         $doc = new LoroDoc();
 
         $list = $doc->getList('list');
-        Container::insertListValue($list, 0, null);
+        $list->insert(0, null);
 
         $map = $doc->getMap('map');
-        Container::insertMapValue($map, 'key', null);
+        $map->set('key', null);
 
         $movableList = $doc->getMovableList('movableList');
-        Container::insertListValue($movableList, 0, null);
-        Container::setMovableListValue($movableList, 0, null);
+        $movableList->insert(0, null);
+        $movableList->set(0, null);
 
         $doc->commit();
 
@@ -83,8 +80,8 @@ final class LoroTest extends LoroTestCase
         $doc = new LoroDoc();
         $map = $doc->getMap('map');
 
-        Container::getOrCreateMapContainer($map, 'list', new LoroList());
-        Container::insertMapValue($map, 'key', 'value');
+        $map->getOrCreateContainer('list', new LoroList());
+        $map->set('key', 'value');
 
         self::assertLoroValueEquals(LoroValue::string('value'), $map->get('key')?->asValue());
     }
@@ -105,10 +102,10 @@ final class LoroTest extends LoroTestCase
         $text2 = $doc2->getText('text');
         $text2->insert(0, '123');
 
-        $doc2->import($doc->export(Export::snapshot()));
+        $doc2->import($doc->export(ExportMode::snapshot()));
         $doc2->importBatch([
             $doc->exportSnapshot(),
-            $doc->export(Export::updates(new VersionVector())),
+            $doc->export(ExportMode::updates(new VersionVector())),
         ]);
 
         self::assertSame('bc123', self::textString($text2));
@@ -134,7 +131,7 @@ final class LoroTest extends LoroTestCase
         $undoManager = new UndoManager($doc);
 
         $n = 0;
-        Loro::setUndoOnPop($undoManager, static function (UndoOrRedo $undoOrRedo, mixed $span, mixed $item) use (&$n): void {
+        $undoManager->setOnPopHandler(static function (UndoOrRedo $undoOrRedo, mixed $span, mixed $item) use (&$n): void {
             $n++;
         });
 
@@ -195,7 +192,7 @@ final class LoroTest extends LoroTestCase
 
         $localDoc->setPeerId(1);
         $localMap = $localDoc->getMap('properties');
-        Container::insertMapValue($localMap, 'x', '42');
+        $localMap->set('x', '42');
 
         $snapshot = $localDoc->exportSnapshot();
 
@@ -203,7 +200,7 @@ final class LoroTest extends LoroTestCase
         $expectedOriginString = 'expectedOriginString';
         $events = 0;
 
-        $subscription = Events::subscribeRoot($remoteDoc, static function (DiffEvent $event) use ($expectedOriginString, &$events): void {
+        $subscription = $remoteDoc->subscribeRoot(static function (DiffEvent $event) use ($expectedOriginString, &$events): void {
             $events++;
             self::assertSame($expectedOriginString, $event->origin);
             self::assertSame('Import', $event->triggeredBy->variant);

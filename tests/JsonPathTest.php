@@ -4,9 +4,6 @@ declare(strict_types=1);
 
 namespace Loro\Tests;
 
-use Loro\Container;
-use Loro\Events;
-use Loro\Loro;
 use Loro\LoroDoc;
 
 final class JsonPathTest extends LoroTestCase
@@ -31,36 +28,36 @@ final class JsonPathTest extends LoroTestCase
         ];
 
         $store = $this->doc->getMap('store');
-        Container::insertMapValue($store, 'books', $books);
-        Container::insertMapValue($store, 'featured_author', 'George Orwell');
-        Container::insertMapValue($store, 'min_price', 10);
-        Container::insertMapValue($store, 'featured_authors', ['George Orwell', 'Jane Austen']);
+        $store->set('books', $books);
+        $store->set('featured_author', 'George Orwell');
+        $store->set('min_price', 10);
+        $store->set('featured_authors', ['George Orwell', 'Jane Austen']);
 
         $project = $this->doc->getMap('project');
-        Container::insertMapValue($project, 'name', 'Launch Plan');
-        Container::insertMapValue($project, 'tasks', [
+        $project->set('name', 'Launch Plan');
+        $project->set('tasks', [
             ['id' => 1, 'title' => 'Storyboard slides', 'assignee' => 'amy', 'status' => 'in-progress'],
             ['id' => 2, 'title' => 'Budget review', 'assignee' => 'li', 'status' => 'todo'],
             ['id' => 3, 'title' => 'Finalize keynote deck', 'assignee' => 'amy', 'status' => 'done'],
         ]);
 
         $drafts = $this->doc->getList('drafts');
-        Container::pushListValue($drafts, ['title' => 'slide walkthrough']);
-        Container::pushListValue($drafts, ['title' => 'executive summary']);
-        Container::pushListValue($drafts, ['title' => 'slide qa checklist']);
+        $drafts->push(['title' => 'slide walkthrough']);
+        $drafts->push(['title' => 'executive summary']);
+        $drafts->push(['title' => 'slide qa checklist']);
 
         $todos = $this->doc->getList('todos');
-        Container::pushListValue($todos, ['title' => 'Wire up auth', 'status' => 'done']);
-        Container::pushListValue($todos, ['title' => 'Polish animation', 'status' => 'doing']);
-        Container::pushListValue($todos, ['title' => 'Ship launch blog', 'status' => 'done']);
+        $todos->push(['title' => 'Wire up auth', 'status' => 'done']);
+        $todos->push(['title' => 'Polish animation', 'status' => 'doing']);
+        $todos->push(['title' => 'Ship launch blog', 'status' => 'done']);
 
         $this->doc->commit();
     }
 
     public function testBasicSelectors(): void
     {
-        self::assertSame(['1984'], Loro::jsonpath($this->doc, "$['store'].books[0].title"));
-        self::assertSame(['1984'], Loro::jsonpath($this->doc, "$['store']['books'][0]['title']"));
+        self::assertSame(['1984'], $this->doc->jsonpathToJSON("$['store'].books[0].title"));
+        self::assertSame(['1984'], $this->doc->jsonpathToJSON("$['store']['books'][0]['title']"));
 
         self::assertSame([
             '1984',
@@ -73,24 +70,21 @@ final class JsonPathTest extends LoroTestCase
             'Lord of the Flies',
             'Pride and Prejudice',
             'The Hobbit',
-        ], Loro::jsonpath($this->doc, "$['store'].books[*].title"));
+        ], $this->doc->jsonpathToJSON("$['store'].books[*].title"));
 
-        self::assertCount(19, Loro::jsonpath($this->doc, '$..title'));
+        self::assertCount(19, $this->doc->jsonpathToJSON('$..title'));
     }
 
     public function testStringLogicalAndInFilters(): void
     {
-        self::assertSame(['1984'], Loro::jsonpath(
-            $this->doc,
+        self::assertSame(['1984'], $this->doc->jsonpathToJSON(
             "$['store'].books[?(@.title == '1984')].title"
         ));
-        self::assertSame(['Animal Farm'], Loro::jsonpath(
-            $this->doc,
+        self::assertSame(['Animal Farm'], $this->doc->jsonpathToJSON(
             "$['store'].books[?(@.title contains 'Farm')].title"
         ));
 
-        $orResult = Loro::jsonpath(
-            $this->doc,
+        $orResult = $this->doc->jsonpathToJSON(
             '$[\'store\'].books[?(@.author == "George Orwell" || @.price >= 10)].title'
         );
         sort($orResult);
@@ -112,10 +106,9 @@ final class JsonPathTest extends LoroTestCase
             'Lord of the Flies',
             'Pride and Prejudice',
             'The Hobbit',
-        ], Loro::jsonpath($this->doc, "$['store'].books[?(!(@.available == false))].title"));
+        ], $this->doc->jsonpathToJSON("$['store'].books[?(!(@.available == false))].title"));
 
-        $inResult = Loro::jsonpath(
-            $this->doc,
+        $inResult = $this->doc->jsonpathToJSON(
             '$.store.books[?(@.author in $.store.featured_authors)].title'
         );
         sort($inResult);
@@ -124,43 +117,36 @@ final class JsonPathTest extends LoroTestCase
 
     public function testUnionSliceAndRecursiveFilters(): void
     {
-        self::assertSame(['1984', 'Brave New World'], Loro::jsonpath(
-            $this->doc,
+        self::assertSame(['1984', 'Brave New World'], $this->doc->jsonpathToJSON(
             "$['store'].books[0,2].title"
         ));
-        self::assertSame(['1984', 'George Orwell'], Loro::jsonpath(
-            $this->doc,
+        self::assertSame(['1984', 'George Orwell'], $this->doc->jsonpathToJSON(
             "$['store'].books[0]['title','author']"
         ));
-        self::assertSame(['Pride and Prejudice', 'The Hobbit'], Loro::jsonpath(
-            $this->doc,
+        self::assertSame(['Pride and Prejudice', 'The Hobbit'], $this->doc->jsonpathToJSON(
             "$['store'].books[-2,-1].title"
         ));
-        self::assertSame(['1984', 'Animal Farm', 'Brave New World'], Loro::jsonpath(
-            $this->doc,
+        self::assertSame(['1984', 'Animal Farm', 'Brave New World'], $this->doc->jsonpathToJSON(
             "$['store'].books[0:3].title"
         ));
-        self::assertSame(['1984', 'Brave New World', 'The Great Gatsby'], Loro::jsonpath(
-            $this->doc,
+        self::assertSame(['1984', 'Brave New World', 'The Great Gatsby'], $this->doc->jsonpathToJSON(
             "$['store'].books[0:5:2].title"
         ));
 
-        $priceResult = Loro::jsonpath($this->doc, '$..[?(@.price > 10)].title');
+        $priceResult = $this->doc->jsonpathToJSON('$..[?(@.price > 10)].title');
         sort($priceResult);
         self::assertSame(['Brave New World', 'The Hobbit', 'To Kill a Mockingbird'], $priceResult);
     }
 
     public function testRootReferencesAndDiscordExamples(): void
     {
-        $featured = Loro::jsonpath(
-            $this->doc,
+        $featured = $this->doc->jsonpathToJSON(
             '$.store.books[?(@.author == $.store.featured_author)].title'
         );
         sort($featured);
         self::assertSame(['1984', 'Animal Farm'], $featured);
 
-        $notFeatured = Loro::jsonpath(
-            $this->doc,
+        $notFeatured = $this->doc->jsonpathToJSON(
             '$.store.books[?(@.author != $.store.featured_author)].title'
         );
         sort($notFeatured);
@@ -175,23 +161,22 @@ final class JsonPathTest extends LoroTestCase
             'To Kill a Mockingbird',
         ], $notFeatured);
 
-        $amyTasks = Loro::jsonpath($this->doc, '$.project.tasks[?(@.assignee in ["amy"])]');
+        $amyTasks = $this->doc->jsonpathToJSON('$.project.tasks[?(@.assignee in ["amy"])]');
         $amyTitles = array_column($amyTasks, 'title');
         sort($amyTitles);
         self::assertSame(['Finalize keynote deck', 'Storyboard slides'], $amyTitles);
 
-        $slideDrafts = Loro::jsonpath($this->doc, '$.drafts[?(@.title contains "slide")]');
+        $slideDrafts = $this->doc->jsonpathToJSON('$.drafts[?(@.title contains "slide")]');
         self::assertSame(['slide walkthrough', 'slide qa checklist'], array_column($slideDrafts, 'title'));
 
-        $doneTodos = Loro::jsonpath($this->doc, '$.todos[?(@.status == "done")]');
+        $doneTodos = $this->doc->jsonpathToJSON('$.todos[?(@.status == "done")]');
         self::assertSame('Wire up auth', $doneTodos[0]['title']);
     }
 
     public function testJsonpathSubscriptionTriggersAndCanUnsubscribe(): void
     {
         $hit = 0;
-        $subscription = Events::subscribeJsonpath(
-            $this->doc,
+        $subscription = $this->doc->subscribeJsonpath(
             '$.store.books[0].title',
             static function () use (&$hit): void {
                 $hit++;
@@ -199,17 +184,17 @@ final class JsonPathTest extends LoroTestCase
         );
 
         $store = $this->doc->getMap('store');
-        $books = Loro::jsonpath($this->doc, '$.store.books')[0];
+        $books = $this->doc->jsonpathToJSON('$.store.books')[0];
         $books[0]['title'] = 'Nineteen Eighty-Four';
         $books[0]['title'] = '1984 (second)';
-        Container::insertMapValue($store, 'books', $books);
+        $store->set('books', $books);
         $this->doc->commit();
 
         self::assertSame(1, $hit);
 
         $subscription->unsubscribe();
         $books[0]['title'] = '1984 (third)';
-        Container::insertMapValue($store, 'books', $books);
+        $store->set('books', $books);
         $this->doc->commit();
 
         self::assertSame(1, $hit);
@@ -219,7 +204,7 @@ final class JsonPathTest extends LoroTestCase
     {
         $specialDoc = new LoroDoc();
         $root = $specialDoc->getMap('root');
-        Container::insertMapValue($root, 'book', [
+        $root->set('book', [
             'map' => [
                 'book-with-dash' => [
                     'price-$10' => 'cheap',
@@ -230,7 +215,7 @@ final class JsonPathTest extends LoroTestCase
 
         self::assertSame(
             ['cheap'],
-            Loro::jsonpath($specialDoc, "$.root.book['map']['book-with-dash']['price-\$10']")
+            $specialDoc->jsonpathToJSON("$.root.book['map']['book-with-dash']['price-\$10']")
         );
     }
 }

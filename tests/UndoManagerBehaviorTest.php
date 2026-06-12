@@ -4,16 +4,12 @@ declare(strict_types=1);
 
 namespace Loro\Tests;
 
-use Loro\Container;
-use Loro\Events;
-use Loro\Export;
-use Loro\Loro;
+use Loro\ExportMode;
 use Loro\LoroDoc;
 use Loro\TreeParentId;
 use Loro\UndoManager;
 use Loro\UndoOrRedo;
 use Loro\UpdateOptions;
-use Loro\Value;
 use Loro\VersionVector;
 
 final class UndoManagerBehaviorTest extends LoroTestCase
@@ -39,17 +35,17 @@ final class UndoManagerBehaviorTest extends LoroTestCase
         self::assertFalse($undo->canRedo());
 
         self::assertTrue($undo->undo());
-        self::assertSame(['text' => 'hello'], Loro::toJson($doc));
+        self::assertSame(['text' => 'hello'], $doc->toJSON());
         self::assertTrue($undo->canRedo());
 
         self::assertTrue($undo->undo());
-        self::assertSame(['text' => ''], Loro::toJson($doc));
+        self::assertSame(['text' => ''], $doc->toJSON());
         self::assertFalse($undo->canUndo());
 
         self::assertTrue($undo->redo());
-        self::assertSame(['text' => 'hello'], Loro::toJson($doc));
+        self::assertSame(['text' => 'hello'], $doc->toJSON());
         self::assertTrue($undo->redo());
-        self::assertSame(['text' => 'hello world!'], Loro::toJson($doc));
+        self::assertSame(['text' => 'hello world!'], $doc->toJSON());
         self::assertFalse($undo->canRedo());
     }
 
@@ -67,11 +63,11 @@ final class UndoManagerBehaviorTest extends LoroTestCase
 
         $remote = new LoroDoc();
         $remote->setPeerId(2);
-        $remote->import($doc->export(Export::snapshot()));
+        $remote->import($doc->export(ExportMode::snapshot()));
         $remote->getText('text')->insert(0, 'R');
         $remote->commit();
 
-        $doc->import($remote->export(Export::updates(new VersionVector())));
+        $doc->import($remote->export(ExportMode::updates(new VersionVector())));
         self::assertTrue($undo->undo());
         self::assertSame('R', self::textString($text));
 
@@ -80,7 +76,7 @@ final class UndoManagerBehaviorTest extends LoroTestCase
             $doc->commit();
         }
 
-        self::assertSame(['text' => 'R0123'], Loro::toJson($doc));
+        self::assertSame(['text' => 'R0123'], $doc->toJSON());
     }
 
     public function testSkipExcludedOriginPrefixes(): void
@@ -108,22 +104,22 @@ final class UndoManagerBehaviorTest extends LoroTestCase
         $text->insert(0, 'Alice ');
         $doc->commit();
 
-        self::assertSame(['text' => 'Alice 1h2e3llo world!'], Loro::toJson($doc));
+        self::assertSame(['text' => 'Alice 1h2e3llo world!'], $doc->toJSON());
 
         $undo->undo();
-        self::assertSame(['text' => '1h2e3llo world!'], Loro::toJson($doc));
+        self::assertSame(['text' => '1h2e3llo world!'], $doc->toJSON());
         $undo->undo();
-        self::assertSame(['text' => '1h2e3llo'], Loro::toJson($doc));
+        self::assertSame(['text' => '1h2e3llo'], $doc->toJSON());
         $undo->undo();
-        self::assertSame(['text' => '123'], Loro::toJson($doc));
+        self::assertSame(['text' => '123'], $doc->toJSON());
         self::assertFalse($undo->canUndo());
 
         self::assertTrue($undo->redo());
-        self::assertSame(['text' => '1h2e3llo'], Loro::toJson($doc));
+        self::assertSame(['text' => '1h2e3llo'], $doc->toJSON());
         self::assertTrue($undo->redo());
-        self::assertSame(['text' => '1h2e3llo world!'], Loro::toJson($doc));
+        self::assertSame(['text' => '1h2e3llo world!'], $doc->toJSON());
         self::assertTrue($undo->redo());
-        self::assertSame(['text' => 'Alice 1h2e3llo world!'], Loro::toJson($doc));
+        self::assertSame(['text' => 'Alice 1h2e3llo world!'], $doc->toJSON());
         self::assertFalse($undo->redo());
     }
 
@@ -134,7 +130,7 @@ final class UndoManagerBehaviorTest extends LoroTestCase
         $undo->setMergeInterval(0);
 
         $undoOrigins = [];
-        $subscription = Events::subscribeRoot($doc, static function ($event) use (&$undoOrigins): void {
+        $subscription = $doc->subscribeRoot(static function ($event) use (&$undoOrigins): void {
             if ($event->origin === 'undo') {
                 $undoOrigins[] = $event->origin;
             }
@@ -145,13 +141,14 @@ final class UndoManagerBehaviorTest extends LoroTestCase
         $pushTimes = 0;
         $popTimes = 0;
 
-        Loro::setUndoOnPop($undo, static function (UndoOrRedo $undoOrRedo, mixed $span, mixed $item) use (&$expectedValue, &$popTimes): void {
+        $undo->setOnPopHandler(static function (UndoOrRedo $undoOrRedo, mixed $span, mixed $item) use (&$expectedValue, &$popTimes): void {
             self::assertSame('Undo', $undoOrRedo->variant);
-            self::assertSame($expectedValue, Value::toPhp($item->value));
+            self::assertSame('I64', $item->value->variant);
+            self::assertSame($expectedValue, $item->value->fields['value']);
             self::assertSame([], $item->cursors);
             $popTimes++;
         });
-        Loro::setUndoOnPush($undo, static function () use (&$pushReturn, &$pushTimes): array {
+        $undo->setOnPushHandler(static function () use (&$pushReturn, &$pushTimes): array {
             $pushTimes++;
 
             return ['value' => $pushReturn, 'cursors' => []];
@@ -192,8 +189,7 @@ final class UndoManagerBehaviorTest extends LoroTestCase
         $lastCommitLabel = null;
         $lastPoppedLabel = null;
 
-        Loro::setUndoOnPush(
-            $undo,
+        $undo->setOnPushHandler(
             static function (UndoOrRedo $undoOrRedo) use (&$lastCommitLabel, &$lastPoppedLabel): array {
                 return [
                     'value' => $undoOrRedo->variant === 'Undo' ? $lastCommitLabel : $lastPoppedLabel,
@@ -201,11 +197,11 @@ final class UndoManagerBehaviorTest extends LoroTestCase
                 ];
             }
         );
-        Loro::setUndoOnPop(
-            $undo,
+        $undo->setOnPopHandler(
             static function (UndoOrRedo $undoOrRedo, mixed $span, mixed $meta) use (&$lastPoppedLabel): void {
                 self::assertSame('Undo', $undoOrRedo->variant);
-                $lastPoppedLabel = Value::toPhp($meta->value);
+                self::assertSame('String', $meta->value->variant);
+                $lastPoppedLabel = $meta->value->fields['value'];
             }
         );
 
@@ -214,20 +210,20 @@ final class UndoManagerBehaviorTest extends LoroTestCase
         $lastCommitLabel = 'Insert A';
         $doc->commit();
 
-        self::assertSame('Insert A', Value::toPhp($undo->topUndoValue()));
-        self::assertSame('Insert A', Value::toPhp($undo->topUndoMeta()?->value));
+        self::assertSame('Insert A', $undo->topUndoValueJSON());
+        self::assertSame('Insert A', $undo->topUndoMetaValueJSON());
         self::assertNull($undo->topRedoValue());
 
         $text->insert(1, 'B');
         $lastCommitLabel = 'Insert B';
         $doc->commit();
 
-        self::assertSame('Insert B', Value::toPhp($undo->topUndoValue()));
+        self::assertSame('Insert B', $undo->topUndoValueJSON());
 
         self::assertTrue($undo->undo());
-        self::assertSame('Insert B', Value::toPhp($undo->topRedoValue()));
-        self::assertSame('Insert B', Value::toPhp($undo->topRedoMeta()?->value));
-        self::assertSame('Insert A', Value::toPhp($undo->topUndoValue()));
+        self::assertSame('Insert B', $undo->topRedoValueJSON());
+        self::assertSame('Insert B', $undo->topRedoMetaValueJSON());
+        self::assertSame('Insert A', $undo->topUndoValueJSON());
     }
 
     public function testGroupedLocalChangesAndRemoteConflictSplitting(): void
@@ -257,11 +253,11 @@ final class UndoManagerBehaviorTest extends LoroTestCase
         $doc2->commit();
 
         $remote = new LoroDoc();
-        $remote->import($doc2->export(Export::snapshot()));
+        $remote->import($doc2->export(ExportMode::snapshot()));
         $remote->getText('text')->update('hello world world', new UpdateOptions(null, false));
         $remote->commit();
 
-        $doc2->import($remote->export(Export::updates(new VersionVector())));
+        $doc2->import($remote->export(ExportMode::updates(new VersionVector())));
         $text2->update('hello world world world', new UpdateOptions(null, false));
         $doc2->commit();
         $undo2->groupEnd();
@@ -282,18 +278,18 @@ final class UndoManagerBehaviorTest extends LoroTestCase
         $tree->enableFractionalIndex(3);
 
         $a = $tree->createAt(TreeParentId::root(), 0);
-        Container::insertMapValue($tree->getMeta($a), 'title', 'a');
+        $tree->getMeta($a)->set('title', 'a');
         $doc->commit();
 
         $b = $tree->createAt(TreeParentId::root(), 1);
-        Container::insertMapValue($tree->getMeta($b), 'title', 'b');
+        $tree->getMeta($b)->set('title', 'b');
         $doc->commit();
-        $before = Loro::toJson($doc);
+        $before = $doc->toJSON();
 
         $tree->movTo($a, TreeParentId::root(), 1);
         $doc->commit();
         $undo->undo();
 
-        self::assertEquals($before, Loro::toJson($doc));
+        self::assertEquals($before, $doc->toJSON());
     }
 }

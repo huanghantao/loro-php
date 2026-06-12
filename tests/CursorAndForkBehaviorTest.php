@@ -4,14 +4,12 @@ declare(strict_types=1);
 
 namespace Loro\Tests;
 
-use Loro\Container;
 use Loro\Cursor;
-use Loro\Export;
+use Loro\ExportMode;
 use Loro\Frontiers;
 use Loro\Id;
 use Loro\LoroDoc;
 use Loro\Side;
-use Loro\Value;
 use Loro\VersionVector;
 
 final class CursorAndForkBehaviorTest extends LoroTestCase
@@ -21,17 +19,17 @@ final class CursorAndForkBehaviorTest extends LoroTestCase
         $doc = new LoroDoc();
         $list = $doc->getList('list');
 
-        Container::insertListValue($list, 0, 'a');
+        $list->insert(0, 'a');
         $cursor = $list->getCursor(0, Side::left());
         self::assertNotNull($cursor);
 
-        Container::insertListValue($list, 1, 'b');
+        $list->insert(1, 'b');
         $pos = $doc->getCursorPos($cursor);
         self::assertSame(0, $pos->current->pos);
         self::assertSame('Left', $pos->current->side->variant);
         self::assertNull($pos->update);
 
-        Container::insertListValue($list, 0, 'c');
+        $list->insert(0, 'c');
         $pos = $doc->getCursorPos($cursor);
         self::assertSame(1, $pos->current->pos);
         self::assertSame('Left', $pos->current->side->variant);
@@ -85,7 +83,7 @@ final class CursorAndForkBehaviorTest extends LoroTestCase
         $branch->getText('text')->insert(6, ' Alice!');
 
         $doc->checkoutToLatest();
-        $doc->import($branch->export(Export::updates(new VersionVector())));
+        $doc->import($branch->export(ExportMode::updates(new VersionVector())));
 
         self::assertSame('Hello, world! Alice!', self::textString($text));
     }
@@ -102,15 +100,15 @@ final class CursorAndForkBehaviorTest extends LoroTestCase
     {
         $doc = new LoroDoc();
         $map = $doc->getMap('map');
-        Container::insertMapValue($map, 'ab', 123);
+        $map->set('ab', 123);
 
         $handle = $doc->getContainer($map->id());
         self::assertNotNull($handle);
         $map2 = $handle->asLoroMap();
         self::assertNotNull($map2);
-        self::assertEquals(Value::toPhp($map->getDeepValue()), Value::toPhp($map2->getDeepValue()));
+        self::assertEquals($map->toJSON(), $map2->toJSON());
 
-        Container::insertMapValue($map2, '0', 12);
-        self::assertSame(12, Value::toPhp($map->get('0')));
+        $map2->set('0', 12);
+        self::assertSame(12, $map->get('0')?->toJSON());
     }
 }

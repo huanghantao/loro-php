@@ -8,14 +8,7 @@ if (is_file($autoload)) {
     require_once $autoload;
 } else {
     foreach ([
-        'NativeLibrary.php',
         'LoroFFI.php',
-        'Value.php',
-        'Container.php',
-        'Loro.php',
-        'Event.php',
-        'Ephemeral.php',
-        'Version.php',
     ] as $file) {
         require_once __DIR__ . '/../src/' . $file;
     }

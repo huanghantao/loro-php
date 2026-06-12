@@ -5,14 +5,7 @@
   "license": "MIT",
   "autoload": {
     "files": [
-      "src/NativeLibrary.php",
-      "src/LoroFFI.php",
-      "src/Value.php",
-      "src/Container.php",
-      "src/Loro.php",
-      "src/Event.php",
-      "src/Ephemeral.php",
-      "src/Version.php"
+      "src/LoroFFI.php"
     ]
   },
   "autoload-dev": {

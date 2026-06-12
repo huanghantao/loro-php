@@ -5,14 +5,11 @@ declare(strict_types=1);
 namespace Loro\Tests;
 
 use Loro\CommitOptions;
-use Loro\Container;
 use Loro\CounterSpan;
-use Loro\Events;
-use Loro\Export;
+use Loro\ExportMode;
 use Loro\Frontiers;
 use Loro\Id;
 use Loro\IdSpan;
-use Loro\Loro;
 use Loro\LoroDoc;
 use Loro\LoroList;
 use Loro\LoroText;
@@ -38,7 +35,7 @@ final class CommitAndHistoryBehaviorTest extends LoroTestCase
         self::assertSame(0, $change->timestamp);
 
         $origins = [];
-        $subscription = Events::subscribeRoot($doc, static function ($event) use (&$origins): void {
+        $subscription = $doc->subscribeRoot(static function ($event) use (&$origins): void {
             $origins[] = $event->origin;
         });
 
@@ -104,7 +101,7 @@ final class CommitAndHistoryBehaviorTest extends LoroTestCase
         self::assertSame(5, $spans->forward[1]->start);
         self::assertSame(11, $spans->forward[1]->end);
 
-        $json = Loro::exportJsonInIdSpan($doc, new IdSpan(1, $spans->forward[1]));
+        $json = $doc->exportJsonInIdSpanCommitted(new IdSpan(1, $spans->forward[1]));
         self::assertCount(1, $json);
         $change = json_decode($json[0], true, flags: JSON_THROW_ON_ERROR);
 
@@ -131,7 +128,7 @@ final class CommitAndHistoryBehaviorTest extends LoroTestCase
 
         self::assertSame(5, $doc->getPendingTxnLen());
 
-        $json = Loro::exportJsonInIdSpan($doc, new IdSpan(1, new CounterSpan(0, 5)));
+        $json = $doc->exportJsonInIdSpanCommitted(new IdSpan(1, new CounterSpan(0, 5)));
         self::assertSame(0, $doc->getPendingTxnLen());
         self::assertCount(1, $json);
 
@@ -149,9 +146,9 @@ final class CommitAndHistoryBehaviorTest extends LoroTestCase
         $doc = new LoroDoc();
         $doc->setPeerId(1);
         $list = $doc->getList('list');
-        Container::insertListValue($list, 0, 'item1');
-        Container::insertListValue($list, 1, 'item2');
-        $text = Container::insertListContainer($list, 2, new LoroText());
+        $list->insert(0, 'item1');
+        $list->insert(1, 'item2');
+        $text = $list->insertContainer(2, new LoroText());
         self::assertInstanceOf(LoroText::class, $text);
         $text->insert(0, 'Hello');
         $withText = $doc->stateFrontiers();
@@ -161,13 +158,13 @@ final class CommitAndHistoryBehaviorTest extends LoroTestCase
         $empty = $doc->stateFrontiers();
         $doc->commit();
 
-        self::assertSame(['list' => []], Loro::toJson($doc));
+        self::assertSame(['list' => []], $doc->toJSON());
 
         $doc->revertTo($withText);
-        self::assertSame(['list' => ['item1', 'item2', 'Hello']], Loro::toJson($doc));
+        self::assertSame(['list' => ['item1', 'item2', 'Hello']], $doc->toJSON());
 
         $doc->revertTo($empty);
-        self::assertSame(['list' => []], Loro::toJson($doc));
+        self::assertSame(['list' => []], $doc->toJSON());
     }
 
     public function testRedactJsonUpdatesRemovesSensitiveTextAndMapValues(): void
@@ -179,8 +176,8 @@ final class CommitAndHistoryBehaviorTest extends LoroTestCase
         $text->insert(0, 'Sensitive information');
         $doc->commit();
 
-        Container::insertMapValue($doc->getMap('map'), 'password', 'secret123');
-        Container::insertMapValue($doc->getMap('map'), 'public', 'public information');
+        $doc->getMap('map')->set('password', 'secret123');
+        $doc->getMap('map')->set('public', 'public information');
         $doc->commit();
 
         $json = $doc->exportJsonUpdates(new \Loro\VersionVector(), $doc->oplogVv());
@@ -191,8 +188,8 @@ final class CommitAndHistoryBehaviorTest extends LoroTestCase
         $redactedTextDoc = new LoroDoc();
         $redactedTextDoc->importJsonUpdates($redactedText);
 
-        self::assertSame('���������������������', Loro::toJson($redactedTextDoc)['text']);
-        self::assertSame('secret123', Loro::toJson($redactedTextDoc)['map']['password']);
+        self::assertSame('���������������������', $redactedTextDoc->toJSON()['text']);
+        self::assertSame('secret123', $redactedTextDoc->toJSON()['map']['password']);
 
         $mapRange = new VersionRange();
         $mapRange->insert(1, 21, 22);
@@ -200,8 +197,8 @@ final class CommitAndHistoryBehaviorTest extends LoroTestCase
         $redactedMapDoc = new LoroDoc();
         $redactedMapDoc->importJsonUpdates($redactedMap);
 
-        self::assertNull(Loro::toJson($redactedMapDoc)['map']['password']);
-        self::assertSame('public information', Loro::toJson($redactedMapDoc)['map']['public']);
+        self::assertNull($redactedMapDoc->toJSON()['map']['password']);
+        self::assertSame('public information', $redactedMapDoc->toJSON()['map']['public']);
     }
 
     public function testTravelChangeAncestorsCanStartFromExportedEventSpan(): void
@@ -212,7 +209,7 @@ final class CommitAndHistoryBehaviorTest extends LoroTestCase
         $doc->commit();
 
         $seen = 0;
-        Loro::travelChangeAncestors($doc, [new Id(1, 0)], static function () use (&$seen): bool {
+        $doc->travelChangeAncestors([new Id(1, 0)], static function () use (&$seen): bool {
             ++$seen;
 
             return true;
