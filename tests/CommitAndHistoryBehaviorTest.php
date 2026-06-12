@@ -25,7 +25,7 @@ final class CommitAndHistoryBehaviorTest extends LoroTestCase
     {
         $doc = new LoroDoc();
         $doc->setPeerId(1);
-        $text = $doc->getText(Container::idLike('text'));
+        $text = $doc->getText('text');
 
         $doc->setNextCommitOptions(new CommitOptions('will clear', false, 123, 'will clear'));
         $doc->clearNextCommitOptions();
@@ -54,7 +54,7 @@ final class CommitAndHistoryBehaviorTest extends LoroTestCase
     {
         $doc = new LoroDoc();
         $doc->setPeerId(1);
-        $text = $doc->getText(Container::idLike('text'));
+        $text = $doc->getText('text');
 
         $text->insert(0, 'hi');
         $doc->commit();
@@ -67,7 +67,7 @@ final class CommitAndHistoryBehaviorTest extends LoroTestCase
 
         $merged = new LoroDoc();
         $merged->setPeerId(1);
-        $mergedText = $merged->getText(Container::idLike('text'));
+        $mergedText = $merged->getText('text');
         $mergedText->insert(0, '1');
         $merged->commitWith(new CommitOptions(null, false, 110, null));
         $mergedText->insert(0, '1');
@@ -77,7 +77,7 @@ final class CommitAndHistoryBehaviorTest extends LoroTestCase
         $split = new LoroDoc();
         $split->setPeerId(1);
         $split->setChangeMergeInterval(9);
-        $splitText = $split->getText(Container::idLike('text'));
+        $splitText = $split->getText('text');
         $splitText->insert(0, '1');
         $split->commitWith(new CommitOptions(null, false, 110, null));
         $splitText->insert(0, '1');
@@ -89,7 +89,7 @@ final class CommitAndHistoryBehaviorTest extends LoroTestCase
     {
         $doc = new LoroDoc();
         $doc->setPeerId(1);
-        $text = $doc->getText(Container::idLike('text'));
+        $text = $doc->getText('text');
 
         $text->insert(0, 'Hello');
         $doc->commitWith(new CommitOptions(null, false, 100, 'a'));
@@ -127,7 +127,7 @@ final class CommitAndHistoryBehaviorTest extends LoroTestCase
     {
         $doc = new LoroDoc();
         $doc->setPeerId(1);
-        $doc->getText(Container::idLike('text'))->insert(0, 'Hello');
+        $doc->getText('text')->insert(0, 'Hello');
 
         self::assertSame(5, $doc->getPendingTxnLen());
 
@@ -148,7 +148,7 @@ final class CommitAndHistoryBehaviorTest extends LoroTestCase
     {
         $doc = new LoroDoc();
         $doc->setPeerId(1);
-        $list = $doc->getList(Container::idLike('list'));
+        $list = $doc->getList('list');
         Container::insertListValue($list, 0, 'item1');
         Container::insertListValue($list, 1, 'item2');
         $text = Container::insertListContainer($list, 2, new LoroText());
@@ -175,12 +175,12 @@ final class CommitAndHistoryBehaviorTest extends LoroTestCase
         $doc = new LoroDoc();
         $doc->setPeerId(1);
 
-        $text = $doc->getText(Container::idLike('text'));
+        $text = $doc->getText('text');
         $text->insert(0, 'Sensitive information');
         $doc->commit();
 
-        Container::insertMapValue($doc->getMap(Container::idLike('map')), 'password', 'secret123');
-        Container::insertMapValue($doc->getMap(Container::idLike('map')), 'public', 'public information');
+        Container::insertMapValue($doc->getMap('map'), 'password', 'secret123');
+        Container::insertMapValue($doc->getMap('map'), 'public', 'public information');
         $doc->commit();
 
         $json = $doc->exportJsonUpdates(new \Loro\VersionVector(), $doc->oplogVv());
@@ -208,7 +208,7 @@ final class CommitAndHistoryBehaviorTest extends LoroTestCase
     {
         $doc = new LoroDoc();
         $doc->setPeerId(1);
-        $doc->getText(Container::idLike('text'))->update('Hello', new UpdateOptions(null, false));
+        $doc->getText('text')->update('Hello', new UpdateOptions(null, false));
         $doc->commit();
 
         $seen = 0;

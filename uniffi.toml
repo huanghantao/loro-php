@@ -1,3 +1,31 @@
 [bindings.php]
 namespace = "Loro"
 file_name = "LoroFFI.php"
+
+[bindings.php.type_adapters.ContainerIdLike]
+type_hint = "string|ContainerId|ContainerIdLike"
+lower = "ContainerIdLike::uniffiLower(UniFFIContainerIdLikeAdapter::from({value}))"
+code = '''
+final class UniFFIContainerIdLikeAdapter extends ContainerIdLike
+{
+    public static function from(string|ContainerId|ContainerIdLike $value): ContainerIdLike
+    {
+        if ($value instanceof ContainerIdLike) {
+            return $value;
+        }
+
+        return new self($value);
+    }
+
+    private function __construct(private string|ContainerId $id)
+    {
+    }
+
+    public function asContainerId(ContainerType $ty): ContainerId
+    {
+        return $this->id instanceof ContainerId
+            ? $this->id
+            : ContainerId::root($this->id, $ty);
+    }
+}
+'''

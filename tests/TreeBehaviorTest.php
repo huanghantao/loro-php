@@ -17,7 +17,7 @@ final class TreeBehaviorTest extends LoroTestCase
     public function testCreateAtMoveBeforeAfterAndMoveToMaintainOrder(): void
     {
         $doc = new LoroDoc();
-        $tree = $doc->getTree(Container::idLike('root'));
+        $tree = $doc->getTree('root');
         $tree->enableFractionalIndex(0);
 
         $root = $tree->create(TreeParentId::root());
@@ -44,7 +44,7 @@ final class TreeBehaviorTest extends LoroTestCase
     public function testDeleteKeepsNodeAddressableAndRemovesItFromVisibleChildren(): void
     {
         $doc = new LoroDoc();
-        $tree = $doc->getTree(Container::idLike('root'));
+        $tree = $doc->getTree('root');
         $root = $tree->create(TreeParentId::root());
         $child = $tree->create(TreeParentId::node($root));
         $child2 = $tree->create(TreeParentId::node($root));
@@ -65,7 +65,7 @@ final class TreeBehaviorTest extends LoroTestCase
     public function testValueWithMetaIncludesNodeMetadataAndParentShape(): void
     {
         $doc = new LoroDoc();
-        $tree = $doc->getTree(Container::idLike('root'));
+        $tree = $doc->getTree('root');
         $root = $tree->create(TreeParentId::root());
         $child = $tree->create(TreeParentId::node($root));
 
@@ -91,7 +91,7 @@ final class TreeBehaviorTest extends LoroTestCase
     public function testValueWithMetaHidesDeletedNodesAndReindexesSiblings(): void
     {
         $doc = new LoroDoc();
-        $tree = $doc->getTree(Container::idLike('root'));
+        $tree = $doc->getTree('root');
         $root = $tree->create(TreeParentId::root());
         $child = $tree->create(TreeParentId::node($root));
         $sibling = $tree->create(TreeParentId::node($root));
@@ -112,7 +112,7 @@ final class TreeBehaviorTest extends LoroTestCase
     public function testTreeSubscriptionExposesMoveOldParentAndIndex(): void
     {
         $doc = new LoroDoc();
-        $tree = $doc->getTree(Container::idLike('root'));
+        $tree = $doc->getTree('root');
         $root = $tree->create(TreeParentId::root());
         $child = $tree->create(TreeParentId::node($root));
         $child2 = $tree->create(TreeParentId::node($root));
@@ -145,7 +145,7 @@ final class TreeBehaviorTest extends LoroTestCase
     public function testMovingNodeUnderItsDescendantThrows(): void
     {
         $doc = new LoroDoc();
-        $tree = $doc->getTree(Container::idLike('root'));
+        $tree = $doc->getTree('root');
         $root = $tree->create(TreeParentId::root());
         $child = $tree->create(TreeParentId::node($root));
 

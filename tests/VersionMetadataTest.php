@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Loro\Tests;
 
-use Loro\Container;
 use Loro\CounterSpan;
 use Loro\Export;
 use Loro\Frontiers;
@@ -25,10 +24,10 @@ final class VersionMetadataTest extends LoroTestCase
         $b = new LoroDoc();
         $b->setPeerId(1);
 
-        $a->getText(Container::idLike('text'))->insert(0, 'ha');
-        $b->getText(Container::idLike('text'))->insert(0, 'yo');
+        $a->getText('text')->insert(0, 'ha');
+        $b->getText('text')->insert(0, 'yo');
         $a->import($b->export(Export::updates(new VersionVector())));
-        $a->getText(Container::idLike('text'))->insert(0, 'k');
+        $a->getText('text')->insert(0, 'k');
         $a->commit();
 
         $vvHashmap = $a->oplogVv()->toHashmap();
@@ -121,7 +120,7 @@ final class VersionMetadataTest extends LoroTestCase
     {
         $doc0 = new LoroDoc();
         $doc0->setPeerId(0);
-        $doc0->getText(Container::idLike('text'))->insert(0, '0');
+        $doc0->getText('text')->insert(0, '0');
         $doc0->commit();
 
         $updateMeta = decodeImportBlobMeta($doc0->export(Export::updates(new VersionVector())), false);
@@ -136,7 +135,7 @@ final class VersionMetadataTest extends LoroTestCase
 
         $doc1 = new LoroDoc();
         $doc1->setPeerId(1);
-        $doc1->getText(Container::idLike('text'))->insert(0, '123');
+        $doc1->getText('text')->insert(0, '123');
         $doc1->import($doc0->export(Export::updates(new VersionVector())));
 
         $snapshotMeta = decodeImportBlobMeta($doc1->export(Export::snapshot()), false);

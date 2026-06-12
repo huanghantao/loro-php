@@ -27,7 +27,7 @@ final class CoreBehaviorTest extends LoroTestCase
     public function testCounterIncrementEncodeAndEvent(): void
     {
         $doc = new LoroDoc();
-        $counter = $doc->getCounter(Container::idLike('counter'));
+        $counter = $doc->getCounter('counter');
 
         $counter->increment(1);
         $counter->increment(2);
@@ -61,7 +61,7 @@ final class CoreBehaviorTest extends LoroTestCase
             self::assertSame(-1.0, $diff->fields['diff']);
         });
 
-        $eventCounter = $eventDoc->getCounter(Container::idLike('counter'));
+        $eventCounter = $eventDoc->getCounter('counter');
         $eventCounter->increment(1);
         $eventCounter->increment(2);
         $eventCounter->decrement(4);
@@ -75,7 +75,7 @@ final class CoreBehaviorTest extends LoroTestCase
     {
         $doc = new LoroDoc();
         $doc->setPeerId(0);
-        $text = $doc->getText(Container::idLike('text'));
+        $text = $doc->getText('text');
 
         $text->insert(0, 'H');
         $doc->commit();
@@ -104,7 +104,7 @@ final class CoreBehaviorTest extends LoroTestCase
     public function testCheckoutChineseCharactersByFrontierCounter(): void
     {
         $doc = new LoroDoc();
-        $text = $doc->getText(Container::idLike('text'));
+        $text = $doc->getText('text');
 
         $text->insert(0, '你好世界');
         $doc->commit();
@@ -128,7 +128,7 @@ final class CoreBehaviorTest extends LoroTestCase
     public function testCompareFrontiersAcrossTwoClients(): void
     {
         $doc = new LoroDoc();
-        $text = $doc->getText(Container::idLike('text'));
+        $text = $doc->getText('text');
         $text->insert(0, '0');
         $doc->commit();
 
@@ -142,7 +142,7 @@ final class CoreBehaviorTest extends LoroTestCase
         $doc->commit();
         self::assertSame('Less', $docB->cmpWithFrontiers($doc->oplogFrontiers())->variant);
 
-        $textB = $docB->getText(Container::idLike('text'));
+        $textB = $docB->getText('text');
         $textB->insert(0, '0');
         $docB->commit();
         self::assertSame('Less', $docB->cmpWithFrontiers($doc->oplogFrontiers())->variant);
@@ -157,7 +157,7 @@ final class CoreBehaviorTest extends LoroTestCase
     public function testMovableListBasicsAndSync(): void
     {
         $doc = new LoroDoc();
-        $list = $doc->getMovableList(Container::idLike('list'));
+        $list = $doc->getMovableList('list');
 
         self::assertSame(0, $list->len());
         Container::pushListValue($list, 'a');
@@ -173,7 +173,7 @@ final class CoreBehaviorTest extends LoroTestCase
         $list->mov(0, 1);
 
         $doc2 = new LoroDoc();
-        $list2 = $doc2->getMovableList(Container::idLike('list'));
+        $list2 = $doc2->getMovableList('list');
         $doc2->import($doc->export(Export::updates(new VersionVector())));
 
         self::assertSame(['b', 'a', 'd'], Value::toPhp($list2->getDeepValue()));
@@ -182,7 +182,7 @@ final class CoreBehaviorTest extends LoroTestCase
     public function testMovableListSubContainersAndConcurrentSet(): void
     {
         $doc = new LoroDoc();
-        $list = $doc->getMovableList(Container::idLike('list'));
+        $list = $doc->getMovableList('list');
         Container::pushListValue($list, 'a');
         Container::pushListValue($list, 'b');
         Container::pushListValue($list, 'c');
@@ -202,14 +202,14 @@ final class CoreBehaviorTest extends LoroTestCase
 
         $docA = new LoroDoc();
         $docA->setPeerId(0);
-        $listA = $docA->getMovableList(Container::idLike('list'));
+        $listA = $docA->getMovableList('list');
         Container::pushListValue($listA, 'a');
         Container::pushListValue($listA, 'b');
         Container::pushListValue($listA, 'c');
 
         $docB = new LoroDoc();
         $docB->setPeerId(1);
-        $listB = $docB->getMovableList(Container::idLike('list'));
+        $listB = $docB->getMovableList('list');
         $docB->import($docA->export(Export::updates(new VersionVector())));
 
         Container::setMovableListValue($listA, 1, 'fromA');
@@ -226,14 +226,14 @@ final class CoreBehaviorTest extends LoroTestCase
     {
         $docA = new LoroDoc();
         $docA->setPeerId(0);
-        $listA = $docA->getMovableList(Container::idLike('list'));
+        $listA = $docA->getMovableList('list');
         Container::pushListValue($listA, 'a');
         Container::pushListValue($listA, 'b');
         Container::pushListValue($listA, 'c');
 
         $docB = new LoroDoc();
         $docB->setPeerId(1);
-        $listB = $docB->getMovableList(Container::idLike('list'));
+        $listB = $docB->getMovableList('list');
         $docB->import($docA->export(Export::updates(new VersionVector())));
 
         $listA->mov(0, 1);
@@ -248,12 +248,12 @@ final class CoreBehaviorTest extends LoroTestCase
     public function testMovableListCanBeInsertedIntoListAsAttachedContainer(): void
     {
         $doc = new LoroDoc();
-        $list = $doc->getMovableList(Container::idLike('list'));
+        $list = $doc->getMovableList('list');
         Container::pushListValue($list, 'a');
         Container::pushListValue($list, 'b');
         Container::pushListValue($list, 'c');
 
-        $parent = $doc->getList(Container::idLike('parent'));
+        $parent = $doc->getList('parent');
         $newList = Container::insertListContainer($parent, 0, $list);
 
         self::assertSame([['a', 'b', 'c']], Loro::toJson($doc)['parent']);
@@ -268,7 +268,7 @@ final class CoreBehaviorTest extends LoroTestCase
     public function testTreeCreateMoveDeleteAndMeta(): void
     {
         $doc = new LoroDoc();
-        $tree = $doc->getTree(Container::idLike('root'));
+        $tree = $doc->getTree('root');
         $tree->enableFractionalIndex(0);
 
         $root = $tree->create(TreeParentId::root());
@@ -298,7 +298,7 @@ final class CoreBehaviorTest extends LoroTestCase
     public function testListCanSetContainerAtPosition(): void
     {
         $doc = new LoroDoc();
-        $list = $doc->getMovableList(Container::idLike('list'));
+        $list = $doc->getMovableList('list');
 
         Container::insertListValue($list, 0, 100);
         $text = Container::setMovableListContainer($list, 0, new LoroText());

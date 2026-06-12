@@ -30,13 +30,13 @@ final class JsonPathTest extends LoroTestCase
             ['title' => 'The Hobbit', 'author' => 'J.R.R. Tolkien', 'price' => 14, 'available' => true],
         ];
 
-        $store = $this->doc->getMap(Container::idLike('store'));
+        $store = $this->doc->getMap('store');
         Container::insertMapValue($store, 'books', $books);
         Container::insertMapValue($store, 'featured_author', 'George Orwell');
         Container::insertMapValue($store, 'min_price', 10);
         Container::insertMapValue($store, 'featured_authors', ['George Orwell', 'Jane Austen']);
 
-        $project = $this->doc->getMap(Container::idLike('project'));
+        $project = $this->doc->getMap('project');
         Container::insertMapValue($project, 'name', 'Launch Plan');
         Container::insertMapValue($project, 'tasks', [
             ['id' => 1, 'title' => 'Storyboard slides', 'assignee' => 'amy', 'status' => 'in-progress'],
@@ -44,12 +44,12 @@ final class JsonPathTest extends LoroTestCase
             ['id' => 3, 'title' => 'Finalize keynote deck', 'assignee' => 'amy', 'status' => 'done'],
         ]);
 
-        $drafts = $this->doc->getList(Container::idLike('drafts'));
+        $drafts = $this->doc->getList('drafts');
         Container::pushListValue($drafts, ['title' => 'slide walkthrough']);
         Container::pushListValue($drafts, ['title' => 'executive summary']);
         Container::pushListValue($drafts, ['title' => 'slide qa checklist']);
 
-        $todos = $this->doc->getList(Container::idLike('todos'));
+        $todos = $this->doc->getList('todos');
         Container::pushListValue($todos, ['title' => 'Wire up auth', 'status' => 'done']);
         Container::pushListValue($todos, ['title' => 'Polish animation', 'status' => 'doing']);
         Container::pushListValue($todos, ['title' => 'Ship launch blog', 'status' => 'done']);
@@ -198,7 +198,7 @@ final class JsonPathTest extends LoroTestCase
             }
         );
 
-        $store = $this->doc->getMap(Container::idLike('store'));
+        $store = $this->doc->getMap('store');
         $books = Loro::jsonpath($this->doc, '$.store.books')[0];
         $books[0]['title'] = 'Nineteen Eighty-Four';
         $books[0]['title'] = '1984 (second)';
@@ -218,7 +218,7 @@ final class JsonPathTest extends LoroTestCase
     public function testQuotedKeysWithSpecialCharacters(): void
     {
         $specialDoc = new LoroDoc();
-        $root = $specialDoc->getMap(Container::idLike('root'));
+        $root = $specialDoc->getMap('root');
         Container::insertMapValue($root, 'book', [
             'map' => [
                 'book-with-dash' => [

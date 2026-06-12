@@ -15,7 +15,7 @@ final class GarbageCollectionSnapshotTest extends LoroTestCase
     {
         $doc = new LoroDoc();
         $doc->setPeerId(1);
-        $list = $doc->getList(Container::idLike('list'));
+        $list = $doc->getList('list');
         Container::insertListValue($list, 0, 'A');
         Container::insertListValue($list, 1, 'B');
         Container::insertListValue($list, 2, 'C');
@@ -26,7 +26,7 @@ final class GarbageCollectionSnapshotTest extends LoroTestCase
         self::assertEquals(Loro::toJson($doc), Loro::toJson($newDoc));
 
         $list->delete(1, 1);
-        Container::insertMapValue($doc->getMap(Container::idLike('map')), 'key', 'value');
+        Container::insertMapValue($doc->getMap('map'), 'key', 'value');
 
         $updatedBytes = $doc->export(Export::updates($newDoc->stateVv()));
         $newDoc->import($updatedBytes);
@@ -38,12 +38,12 @@ final class GarbageCollectionSnapshotTest extends LoroTestCase
     {
         $doc = new LoroDoc();
         $doc->setPeerId(1);
-        $list = $doc->getList(Container::idLike('list'));
+        $list = $doc->getList('list');
         Container::insertListValue($list, 0, 'A');
 
         $docB = $doc->fork();
         $version = $docB->stateVv();
-        Container::insertListValue($docB->getList(Container::idLike('list')), 1, 'C');
+        Container::insertListValue($docB->getList('list'), 1, 'C');
         $updates = $docB->export(Export::updates($version));
 
         Container::insertListValue($list, 1, 'B');
@@ -60,7 +60,7 @@ final class GarbageCollectionSnapshotTest extends LoroTestCase
     public function testCanForkAShallowSnapshot(): void
     {
         $docA = new LoroDoc();
-        $listA = $docA->getList(Container::idLike('list'));
+        $listA = $docA->getList('list');
         Container::insertListValue($listA, 0, 'A');
         Container::insertListValue($listA, 1, 'B');
         Container::insertListValue($listA, 2, 'C');

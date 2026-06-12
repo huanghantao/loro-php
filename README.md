@@ -62,15 +62,15 @@ use Loro\LoroDoc;
 
 $doc = new LoroDoc();
 
-$text = $doc->getText(Container::idLike('text'));
+$text = $doc->getText('text');
 $text->insert(0, 'Hello');
 $text->insert(5, ', Loro');
 
-$profile = $doc->getMap(Container::idLike('profile'));
+$profile = $doc->getMap('profile');
 Container::insertMapValue($profile, 'name', 'Ada');
 Container::insertMapValue($profile, 'online', true);
 
-$todos = $doc->getList(Container::idLike('todos'));
+$todos = $doc->getList('todos');
 Container::pushListValue($todos, 'write docs');
 Container::pushListValue($todos, 'ship release');
 
@@ -86,14 +86,13 @@ print_r(Loro::toJson($doc));
 
 require __DIR__ . '/vendor/autoload.php';
 
-use Loro\Container;
 use Loro\Export;
 use Loro\LoroDoc;
 use Loro\VersionVector;
 
 $alice = new LoroDoc();
 $alice->setPeerId(1);
-$aliceText = $alice->getText(Container::idLike('text'));
+$aliceText = $alice->getText('text');
 $aliceText->insert(0, 'Hello');
 $alice->commit();
 
@@ -101,7 +100,7 @@ $bob = new LoroDoc();
 $bob->setPeerId(2);
 $bob->import($alice->export(Export::updates(new VersionVector())));
 
-$bobText = $bob->getText(Container::idLike('text'));
+$bobText = $bob->getText('text');
 $bobText->insert($bobText->lenUnicode(), ' from Bob');
 $bob->commit();
 
@@ -124,7 +123,7 @@ use Loro\LoroDoc;
 $doc = new LoroDoc();
 Loro::configureTextStyle($doc, ['bold' => 'after']);
 
-$text = $doc->getText(Container::idLike('text'));
+$text = $doc->getText('text');
 $text->insert(0, 'Hello world');
 Container::markText($text, 0, 5, 'bold', true);
 
@@ -138,13 +137,12 @@ print_r(Loro::textDeltaToPhp($text->toDelta()));
 
 require __DIR__ . '/vendor/autoload.php';
 
-use Loro\Container;
 use Loro\Export;
 use Loro\Loro;
 use Loro\LoroDoc;
 
 $doc = new LoroDoc();
-$doc->getText(Container::idLike('text'))->insert(0, 'snapshot me');
+$doc->getText('text')->insert(0, 'snapshot me');
 $doc->commit();
 
 $snapshot = $doc->export(Export::snapshot());

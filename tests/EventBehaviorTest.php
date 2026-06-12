@@ -34,7 +34,7 @@ final class EventBehaviorTest extends LoroTestCase
             $events[] = $event;
         });
 
-        $text = $doc->getText(Container::idLike('text'));
+        $text = $doc->getText('text');
         $text->insert(0, '3');
         $doc->commit();
 
@@ -64,7 +64,7 @@ final class EventBehaviorTest extends LoroTestCase
             $events[] = $event;
         });
 
-        $map = $doc->getMap(Container::idLike('map'));
+        $map = $doc->getMap('map');
         $subMap = Container::insertMapContainer($map, 'sub', new LoroMap());
         self::assertInstanceOf(LoroMap::class, $subMap);
         Container::insertMapValue($subMap, '0', '1');
@@ -95,7 +95,7 @@ final class EventBehaviorTest extends LoroTestCase
             $events[] = $event;
         });
 
-        $list = $doc->getList(Container::idLike('list'));
+        $list = $doc->getList('list');
         Container::insertListValue($list, 0, '3');
         $doc->commit();
 
@@ -109,7 +109,7 @@ final class EventBehaviorTest extends LoroTestCase
             ['insert' => ['12'], 'isMove' => false],
         ], self::listDiffToPhp($events[1]->events[0]));
 
-        $map = $doc->getMap(Container::idLike('map'));
+        $map = $doc->getMap('map');
         Container::insertMapValue($map, '0', '3');
         Container::insertMapValue($map, '1', '2');
         $doc->commit();
@@ -129,7 +129,7 @@ final class EventBehaviorTest extends LoroTestCase
         self::assertNull(Value::toPhp($updated['0']));
         self::assertNull($updated['1']);
 
-        $tree = $doc->getTree(Container::idLike('tree'));
+        $tree = $doc->getTree('tree');
         $tree->create(TreeParentId::root());
         $doc->commit();
 
@@ -143,7 +143,7 @@ final class EventBehaviorTest extends LoroTestCase
     public function testContainerSubscriptionsAreDeepAndCanBeUnsubscribed(): void
     {
         $doc = new LoroDoc();
-        $map = $doc->getMap(Container::idLike('map'));
+        $map = $doc->getMap('map');
         $times = 0;
 
         $subscription = Events::subscribeContainer($map, static function () use (&$times): void {
@@ -175,8 +175,8 @@ final class EventBehaviorTest extends LoroTestCase
     {
         $doc1 = new LoroDoc();
         $doc2 = new LoroDoc();
-        $text1 = $doc1->getText(Container::idLike('text'));
-        $text2 = $doc2->getText(Container::idLike('text'));
+        $text1 = $doc1->getText('text');
+        $text2 = $doc2->getText('text');
 
         $sub1 = Events::subscribeLocalUpdate($doc1, static function (string $update) use ($doc2): void {
             $doc2->import($update);
@@ -212,11 +212,11 @@ final class EventBehaviorTest extends LoroTestCase
             static function (FirstCommitFromPeerPayload $payload) use ($doc, &$peers): void {
                 $peer = (string) $payload->peer;
                 $peers[] = $peer;
-                Container::insertMapValue($doc->getMap(Container::idLike('map')), $peer, 'user-' . $peer);
+                Container::insertMapValue($doc->getMap('map'), $peer, 'user-' . $peer);
             }
         );
 
-        $list = $doc->getList(Container::idLike('list'));
+        $list = $doc->getList('list');
         Container::insertListValue($list, 0, 100);
         $doc->commit();
         Container::insertListValue($list, 0, 200);
@@ -227,7 +227,7 @@ final class EventBehaviorTest extends LoroTestCase
         $doc->commit();
 
         self::assertSame(['0', '1'], $peers);
-        self::assertSame('user-0', Value::toPhp($doc->getMap(Container::idLike('map'))->get('0')));
+        self::assertSame('user-0', Value::toPhp($doc->getMap('map')->get('0')));
 
         $subscription->detach();
     }
@@ -250,7 +250,7 @@ final class EventBehaviorTest extends LoroTestCase
         );
 
         $doc->setNextCommitOrigin('origin from test');
-        Container::insertListValue($doc->getList(Container::idLike('list')), 0, 100);
+        Container::insertListValue($doc->getList('list'), 0, 100);
         $doc->commit();
 
         $change = $doc->getChange($doc->oplogFrontiers()->toVec()[0]);
@@ -266,12 +266,12 @@ final class EventBehaviorTest extends LoroTestCase
     public function testImportBatchCanReenterDocumentInPreCommitCallback(): void
     {
         $remote = new LoroDoc();
-        $remote->getText(Container::idLike('remote'))->insert(0, 'remote');
+        $remote->getText('remote')->insert(0, 'remote');
         $remote->commit();
 
         $doc = new LoroDoc();
         $doc->setPeerId(1);
-        $doc->getText(Container::idLike('local'))->insert(0, 'local');
+        $doc->getText('local')->insert(0, 'local');
 
         $seenPeer = null;
         $subscription = Events::subscribePreCommit(
@@ -296,7 +296,7 @@ final class EventBehaviorTest extends LoroTestCase
     {
         $doc = new LoroDoc();
         $doc->setPeerId(1);
-        $doc->getText(Container::idLike('text'))->insert(0, 'local');
+        $doc->getText('text')->insert(0, 'local');
 
         $seenPeer = null;
         $subscription = Events::subscribePreCommit(
@@ -317,7 +317,7 @@ final class EventBehaviorTest extends LoroTestCase
     public function testImportAndCheckoutEventsUseTheirTriggerKinds(): void
     {
         $source = new LoroDoc();
-        Container::insertListValue($source->getList(Container::idLike('list')), 0, 123);
+        Container::insertListValue($source->getList('list'), 0, 123);
         $source->commit();
 
         $imported = new LoroDoc();
@@ -350,7 +350,7 @@ final class EventBehaviorTest extends LoroTestCase
             $events[] = $event;
         });
 
-        $list = $doc->getMovableList(Container::idLike('list'));
+        $list = $doc->getMovableList('list');
         Container::pushListValue($list, 'a');
         Container::pushListValue($list, 'b');
         Container::pushListValue($list, 'c');

@@ -29,7 +29,7 @@ final class UndoManagerBehaviorTest extends LoroTestCase
         self::assertFalse($undo->canRedo());
         self::assertFalse($undo->canUndo());
 
-        $text = $doc->getText(Container::idLike('text'));
+        $text = $doc->getText('text');
         $text->insert(0, 'hello');
         $doc->commit();
         $text->insert(5, ' world!');
@@ -57,7 +57,7 @@ final class UndoManagerBehaviorTest extends LoroTestCase
     {
         $doc = new LoroDoc();
         $doc->setPeerId(1);
-        $text = $doc->getText(Container::idLike('text'));
+        $text = $doc->getText('text');
         $undo = new UndoManager($doc);
         $undo->setMaxUndoSteps(3);
         $undo->setMergeInterval(0);
@@ -68,7 +68,7 @@ final class UndoManagerBehaviorTest extends LoroTestCase
         $remote = new LoroDoc();
         $remote->setPeerId(2);
         $remote->import($doc->export(Export::snapshot()));
-        $remote->getText(Container::idLike('text'))->insert(0, 'R');
+        $remote->getText('text')->insert(0, 'R');
         $remote->commit();
 
         $doc->import($remote->export(Export::updates(new VersionVector())));
@@ -91,7 +91,7 @@ final class UndoManagerBehaviorTest extends LoroTestCase
         $undo->setMergeInterval(0);
         $undo->addExcludeOriginPrefix('sys:');
 
-        $text = $doc->getText(Container::idLike('text'));
+        $text = $doc->getText('text');
         $text->insert(0, 'hello');
         $doc->commit();
         $text->insert(0, '1');
@@ -157,7 +157,7 @@ final class UndoManagerBehaviorTest extends LoroTestCase
             return ['value' => $pushReturn, 'cursors' => []];
         });
 
-        $text = $doc->getText(Container::idLike('text'));
+        $text = $doc->getText('text');
         $text->insert(0, 'hello');
         $pushReturn = 1;
         $doc->commit();
@@ -209,7 +209,7 @@ final class UndoManagerBehaviorTest extends LoroTestCase
             }
         );
 
-        $text = $doc->getText(Container::idLike('text'));
+        $text = $doc->getText('text');
         $text->insert(0, 'A');
         $lastCommitLabel = 'Insert A';
         $doc->commit();
@@ -234,7 +234,7 @@ final class UndoManagerBehaviorTest extends LoroTestCase
     {
         $doc = new LoroDoc();
         $undo = new UndoManager($doc);
-        $text = $doc->getText(Container::idLike('text'));
+        $text = $doc->getText('text');
 
         $undo->groupStart();
         $text->update('hello', new UpdateOptions(null, false));
@@ -248,7 +248,7 @@ final class UndoManagerBehaviorTest extends LoroTestCase
 
         $doc2 = new LoroDoc();
         $undo2 = new UndoManager($doc2);
-        $text2 = $doc2->getText(Container::idLike('text'));
+        $text2 = $doc2->getText('text');
 
         $undo2->groupStart();
         $text2->update('hello', new UpdateOptions(null, false));
@@ -258,7 +258,7 @@ final class UndoManagerBehaviorTest extends LoroTestCase
 
         $remote = new LoroDoc();
         $remote->import($doc2->export(Export::snapshot()));
-        $remote->getText(Container::idLike('text'))->update('hello world world', new UpdateOptions(null, false));
+        $remote->getText('text')->update('hello world world', new UpdateOptions(null, false));
         $remote->commit();
 
         $doc2->import($remote->export(Export::updates(new VersionVector())));
@@ -278,7 +278,7 @@ final class UndoManagerBehaviorTest extends LoroTestCase
         $undo->setMergeInterval(0);
         $undo->setMaxUndoSteps(100);
 
-        $tree = $doc->getTree(Container::idLike('tree'));
+        $tree = $doc->getTree('tree');
         $tree->enableFractionalIndex(3);
 
         $a = $tree->createAt(TreeParentId::root(), 0);

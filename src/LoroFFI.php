@@ -7644,9 +7644,9 @@ final class LoroDoc
         $result = UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_method_lorodoc_get_container', $this->uniffiCloneHandle(), ContainerId::uniffiLower($id));
         return UniFFIRuntime::liftSerialized($result, ['optional', ['object', 'ValueOrContainer']]);
     }
-    public function getCounter(ContainerIdLike $id): LoroCounter
+    public function getCounter(string|ContainerId|ContainerIdLike $id): LoroCounter
     {
-        $result = UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_method_lorodoc_get_counter', $this->uniffiCloneHandle(), ContainerIdLike::uniffiLower($id));
+        $result = UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_method_lorodoc_get_counter', $this->uniffiCloneHandle(), ContainerIdLike::uniffiLower(UniFFIContainerIdLikeAdapter::from($id)));
         return LoroCounter::uniffiLift($result);
     }
     public function getCursorPos(Cursor $cursor): PosQueryResult
@@ -7664,19 +7664,19 @@ final class LoroDoc
         $result = UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_method_lorodoc_get_deep_value_with_id', $this->uniffiCloneHandle());
         return LoroValue::uniffiLift($result);
     }
-    public function getList(ContainerIdLike $id): LoroList
+    public function getList(string|ContainerId|ContainerIdLike $id): LoroList
     {
-        $result = UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_method_lorodoc_get_list', $this->uniffiCloneHandle(), ContainerIdLike::uniffiLower($id));
+        $result = UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_method_lorodoc_get_list', $this->uniffiCloneHandle(), ContainerIdLike::uniffiLower(UniFFIContainerIdLikeAdapter::from($id)));
         return LoroList::uniffiLift($result);
     }
-    public function getMap(ContainerIdLike $id): LoroMap
+    public function getMap(string|ContainerId|ContainerIdLike $id): LoroMap
     {
-        $result = UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_method_lorodoc_get_map', $this->uniffiCloneHandle(), ContainerIdLike::uniffiLower($id));
+        $result = UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_method_lorodoc_get_map', $this->uniffiCloneHandle(), ContainerIdLike::uniffiLower(UniFFIContainerIdLikeAdapter::from($id)));
         return LoroMap::uniffiLift($result);
     }
-    public function getMovableList(ContainerIdLike $id): LoroMovableList
+    public function getMovableList(string|ContainerId|ContainerIdLike $id): LoroMovableList
     {
-        $result = UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_method_lorodoc_get_movable_list', $this->uniffiCloneHandle(), ContainerIdLike::uniffiLower($id));
+        $result = UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_method_lorodoc_get_movable_list', $this->uniffiCloneHandle(), ContainerIdLike::uniffiLower(UniFFIContainerIdLikeAdapter::from($id)));
         return LoroMovableList::uniffiLift($result);
     }
     public function getPathToContainer(ContainerId $id): ?array
@@ -7689,14 +7689,14 @@ final class LoroDoc
         $result = UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_method_lorodoc_get_pending_txn_len', $this->uniffiCloneHandle());
         return UniFFIRuntime::liftUInt32($result);
     }
-    public function getText(ContainerIdLike $id): LoroText
+    public function getText(string|ContainerId|ContainerIdLike $id): LoroText
     {
-        $result = UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_method_lorodoc_get_text', $this->uniffiCloneHandle(), ContainerIdLike::uniffiLower($id));
+        $result = UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_method_lorodoc_get_text', $this->uniffiCloneHandle(), ContainerIdLike::uniffiLower(UniFFIContainerIdLikeAdapter::from($id)));
         return LoroText::uniffiLift($result);
     }
-    public function getTree(ContainerIdLike $id): LoroTree
+    public function getTree(string|ContainerId|ContainerIdLike $id): LoroTree
     {
-        $result = UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_method_lorodoc_get_tree', $this->uniffiCloneHandle(), ContainerIdLike::uniffiLower($id));
+        $result = UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_method_lorodoc_get_tree', $this->uniffiCloneHandle(), ContainerIdLike::uniffiLower(UniFFIContainerIdLikeAdapter::from($id)));
         return LoroTree::uniffiLift($result);
     }
     public function getValue(): LoroValue
@@ -7869,34 +7869,34 @@ final class LoroDoc
     {
         UniFFIRuntime::rustCallWithError('uniffi_loro_ffi_fn_method_lorodoc_travel_change_ancestors', ['enum', 'ChangeTravelError'], $this->uniffiCloneHandle(), UniFFIRuntime::lowerSerialized($ids, ['sequence', ['record', 'Id']]), ChangeAncestorsTraveler::uniffiLower($f));
     }
-    public function tryGetCounter(ContainerIdLike $id): ?LoroCounter
+    public function tryGetCounter(string|ContainerId|ContainerIdLike $id): ?LoroCounter
     {
-        $result = UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_method_lorodoc_try_get_counter', $this->uniffiCloneHandle(), ContainerIdLike::uniffiLower($id));
+        $result = UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_method_lorodoc_try_get_counter', $this->uniffiCloneHandle(), ContainerIdLike::uniffiLower(UniFFIContainerIdLikeAdapter::from($id)));
         return UniFFIRuntime::liftSerialized($result, ['optional', ['object', 'LoroCounter']]);
     }
-    public function tryGetList(ContainerIdLike $id): ?LoroList
+    public function tryGetList(string|ContainerId|ContainerIdLike $id): ?LoroList
     {
-        $result = UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_method_lorodoc_try_get_list', $this->uniffiCloneHandle(), ContainerIdLike::uniffiLower($id));
+        $result = UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_method_lorodoc_try_get_list', $this->uniffiCloneHandle(), ContainerIdLike::uniffiLower(UniFFIContainerIdLikeAdapter::from($id)));
         return UniFFIRuntime::liftSerialized($result, ['optional', ['object', 'LoroList']]);
     }
-    public function tryGetMap(ContainerIdLike $id): ?LoroMap
+    public function tryGetMap(string|ContainerId|ContainerIdLike $id): ?LoroMap
     {
-        $result = UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_method_lorodoc_try_get_map', $this->uniffiCloneHandle(), ContainerIdLike::uniffiLower($id));
+        $result = UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_method_lorodoc_try_get_map', $this->uniffiCloneHandle(), ContainerIdLike::uniffiLower(UniFFIContainerIdLikeAdapter::from($id)));
         return UniFFIRuntime::liftSerialized($result, ['optional', ['object', 'LoroMap']]);
     }
-    public function tryGetMovableList(ContainerIdLike $id): ?LoroMovableList
+    public function tryGetMovableList(string|ContainerId|ContainerIdLike $id): ?LoroMovableList
     {
-        $result = UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_method_lorodoc_try_get_movable_list', $this->uniffiCloneHandle(), ContainerIdLike::uniffiLower($id));
+        $result = UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_method_lorodoc_try_get_movable_list', $this->uniffiCloneHandle(), ContainerIdLike::uniffiLower(UniFFIContainerIdLikeAdapter::from($id)));
         return UniFFIRuntime::liftSerialized($result, ['optional', ['object', 'LoroMovableList']]);
     }
-    public function tryGetText(ContainerIdLike $id): ?LoroText
+    public function tryGetText(string|ContainerId|ContainerIdLike $id): ?LoroText
     {
-        $result = UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_method_lorodoc_try_get_text', $this->uniffiCloneHandle(), ContainerIdLike::uniffiLower($id));
+        $result = UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_method_lorodoc_try_get_text', $this->uniffiCloneHandle(), ContainerIdLike::uniffiLower(UniFFIContainerIdLikeAdapter::from($id)));
         return UniFFIRuntime::liftSerialized($result, ['optional', ['object', 'LoroText']]);
     }
-    public function tryGetTree(ContainerIdLike $id): ?LoroTree
+    public function tryGetTree(string|ContainerId|ContainerIdLike $id): ?LoroTree
     {
-        $result = UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_method_lorodoc_try_get_tree', $this->uniffiCloneHandle(), ContainerIdLike::uniffiLower($id));
+        $result = UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_method_lorodoc_try_get_tree', $this->uniffiCloneHandle(), ContainerIdLike::uniffiLower(UniFFIContainerIdLikeAdapter::from($id)));
         return UniFFIRuntime::liftSerialized($result, ['optional', ['object', 'LoroTree']]);
     }
     public function vvToFrontiers(VersionVector $vv): Frontiers
@@ -10012,5 +10012,27 @@ final class VersionVector
     {
         $result = UniFFIRuntime::rustCall('uniffi_loro_ffi_fn_method_versionvector_try_update_last', $this->uniffiCloneHandle(), Id::uniffiLower($id));
         return UniFFIRuntime::liftBool($result);
+    }
+}
+
+
+final class UniFFIContainerIdLikeAdapter extends ContainerIdLike
+{
+    public static function from(string|ContainerId|ContainerIdLike $value): ContainerIdLike
+    {
+        if ($value instanceof ContainerIdLike) {
+            return $value;
+        }
+
+        return new self($value);
+    }
+
+    private function __construct(private string|ContainerId $id) {}
+
+    public function asContainerId(ContainerType $ty): ContainerId
+    {
+        return $this->id instanceof ContainerId
+            ? $this->id
+            : ContainerId::root($this->id, $ty);
     }
 }

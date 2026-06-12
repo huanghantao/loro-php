@@ -19,7 +19,7 @@ final class CursorAndForkBehaviorTest extends LoroTestCase
     public function testListCursorTracksStablePositionThroughInsertAndDelete(): void
     {
         $doc = new LoroDoc();
-        $list = $doc->getList(Container::idLike('list'));
+        $list = $doc->getList('list');
 
         Container::insertListValue($list, 0, 'a');
         $cursor = $list->getCursor(0, Side::left());
@@ -47,7 +47,7 @@ final class CursorAndForkBehaviorTest extends LoroTestCase
     public function testCursorFromAnotherDocumentCannotBeResolved(): void
     {
         $doc = new LoroDoc();
-        $text = $doc->getText(Container::idLike('text'));
+        $text = $doc->getText('text');
         $text->insert(0, 'hello');
         $cursor = $text->getCursor(2, Side::middle());
         self::assertNotNull($cursor);
@@ -59,7 +59,7 @@ final class CursorAndForkBehaviorTest extends LoroTestCase
     public function testCursorEncodeDecodeRoundTrips(): void
     {
         $doc = new LoroDoc();
-        $text = $doc->getText(Container::idLike('text'));
+        $text = $doc->getText('text');
         $text->insert(0, 'hello');
 
         $cursor = $text->getCursor(2, Side::middle());
@@ -77,12 +77,12 @@ final class CursorAndForkBehaviorTest extends LoroTestCase
     {
         $doc = new LoroDoc();
         $doc->setPeerId(0);
-        $text = $doc->getText(Container::idLike('text'));
+        $text = $doc->getText('text');
         $text->insert(0, 'Hello, world!');
 
         $branch = $doc->forkAt(Frontiers::fromIds([new Id(0, 5)]));
         $branch->setPeerId(1);
-        $branch->getText(Container::idLike('text'))->insert(6, ' Alice!');
+        $branch->getText('text')->insert(6, ' Alice!');
 
         $doc->checkoutToLatest();
         $doc->import($branch->export(Export::updates(new VersionVector())));
@@ -101,7 +101,7 @@ final class CursorAndForkBehaviorTest extends LoroTestCase
     public function testGetContainerByIdReturnsLiveHandle(): void
     {
         $doc = new LoroDoc();
-        $map = $doc->getMap(Container::idLike('map'));
+        $map = $doc->getMap('map');
         Container::insertMapValue($map, 'ab', 123);
 
         $handle = $doc->getContainer($map->id());

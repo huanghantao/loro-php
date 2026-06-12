@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Loro\Tests;
 
-use Loro\Container;
 use Loro\Export;
 use Loro\LoroDoc;
 
@@ -14,11 +13,11 @@ final class IssueRegressionTest extends LoroTestCase
     {
         $doc1 = new LoroDoc();
         $doc1->setPeerId(0);
-        $text1 = $doc1->getText(Container::idLike('text'));
+        $text1 = $doc1->getText('text');
 
         $doc2 = new LoroDoc();
         $doc2->setPeerId(1);
-        $text2 = $doc2->getText(Container::idLike('text'));
+        $text2 = $doc2->getText('text');
 
         $text1->insert(0, 'T');
         $doc1->commit();

@@ -27,7 +27,7 @@ final class RichTextTest extends LoroTestCase
             'bold' => 'after',
             'italic' => 'before',
         ]);
-        $text = $doc->getText(Container::idLike('text'));
+        $text = $doc->getText('text');
 
         $text->insert(0, 'Hello World!');
         Container::markText($text, 0, 5, 'bold', true);
@@ -53,7 +53,7 @@ final class RichTextTest extends LoroTestCase
     public function testRichTextEventsAndImportEventsExposeTextDelta(): void
     {
         $doc = new LoroDoc();
-        $text = $doc->getText(Container::idLike('text'));
+        $text = $doc->getText('text');
         $localDelta = null;
 
         $subscription = Events::subscribeContainer($text, static function ($event) use (&$localDelta): void {
@@ -71,7 +71,7 @@ final class RichTextTest extends LoroTestCase
         ], $localDelta);
 
         $doc2 = new LoroDoc();
-        $text2 = $doc2->getText(Container::idLike('text'));
+        $text2 = $doc2->getText('text');
         $importDelta = null;
         $subscription2 = Events::subscribeContainer($text2, static function ($event) use (&$importDelta): void {
             $importDelta = Loro::textDeltaToPhp($event->events[0]->diff->fields['diff']);
@@ -86,7 +86,7 @@ final class RichTextTest extends LoroTestCase
     public function testEmojiDeletionUtf8SliceCharAtSpliceAndUpdate(): void
     {
         $doc = new LoroDoc();
-        $text = $doc->getText(Container::idLike('text'));
+        $text = $doc->getText('text');
         $text->insert(0, '012345👨‍👩‍👦6789');
         $doc->commit();
 
@@ -98,7 +98,7 @@ final class RichTextTest extends LoroTestCase
             ['insert' => '0123456789', 'attributes' => ['bold' => true]],
         ], Loro::textDeltaToPhp($text->toDelta()));
 
-        $utf8 = $doc->getText(Container::idLike('utf8'));
+        $utf8 = $doc->getText('utf8');
         $utf8->insert(0, '你好');
         $utf8->insertUtf8(3, 'a');
         $utf8->insertUtf8(7, 'b');
@@ -123,7 +123,7 @@ final class RichTextTest extends LoroTestCase
             'italic' => 'before',
             'emoji' => 'none',
         ]);
-        $text = $doc->getText(Container::idLike('text'));
+        $text = $doc->getText('text');
         $text->insert(0, 'Hello World!');
         Container::markText($text, 0, 5, 'bold', true);
         Container::markText($text, 6, 11, 'italic', true);
@@ -135,7 +135,7 @@ final class RichTextTest extends LoroTestCase
         ], Loro::textDeltaToPhp($text->sliceDelta(1, 8, PosType::unicode())));
         self::assertSame([], Loro::textDeltaToPhp($text->sliceDelta(5, 5, PosType::unicode())));
 
-        $styled = $doc->getText(Container::idLike('styled'));
+        $styled = $doc->getText('styled');
         $styled->applyDelta([
             TextDelta::insert('hello', ['bold' => Value::bool(true)]),
         ]);
@@ -158,7 +158,7 @@ final class RichTextTest extends LoroTestCase
             'myStyle' => 'none',
             'comment' => 'none',
         ]);
-        $text = $doc->getText(Container::idLike('text'));
+        $text = $doc->getText('text');
         $text->insert(0, 'foo');
         Container::markText($text, 0, 3, 'myStyle', 123);
 
@@ -174,7 +174,7 @@ final class RichTextTest extends LoroTestCase
     {
         $doc = new LoroDoc();
         Loro::configureTextStyle($doc, ['comment' => 'none']);
-        $text = $doc->getText(Container::idLike('text'));
+        $text = $doc->getText('text');
         $text->insert(0, 'The fox jumped.');
         Container::markText($text, 0, 7, 'comment:alice', 'Hi');
         Container::markText($text, 4, 14, 'comment:bob', 'Jump');
@@ -190,7 +190,7 @@ final class RichTextTest extends LoroTestCase
     public function testDefaultTextStyleConfigAllowsUnknownMarks(): void
     {
         $doc = new LoroDoc();
-        $text = $doc->getText(Container::idLike('text'));
+        $text = $doc->getText('text');
         $text->insert(0, 'Hello');
 
         $this->expectException(UniFFIException::class);
@@ -201,7 +201,7 @@ final class RichTextTest extends LoroTestCase
     {
         $doc = new LoroDoc();
         $doc->configDefaultTextStyle(new StyleConfig(ExpandType::before()));
-        $text = $doc->getText(Container::idLike('text'));
+        $text = $doc->getText('text');
         $text->insert(0, 'Hello');
         Container::markText($text, 0, 5, 'size', true);
 
@@ -221,7 +221,7 @@ final class RichTextTest extends LoroTestCase
         ], Loro::textDeltaToPhp($text->toDelta()));
 
         $doc = new LoroDoc();
-        $map = $doc->getMap(Container::idLike('map'));
+        $map = $doc->getMap('map');
         $attached = Container::insertMapContainer($map, 'text', $text);
         self::assertInstanceOf(\Loro\LoroText::class, $attached);
 
@@ -244,7 +244,7 @@ final class RichTextTest extends LoroTestCase
         Container::markText($text, 0, 3, 'bold', true);
 
         $doc = new LoroDoc();
-        $map = $doc->getMap(Container::idLike('map'));
+        $map = $doc->getMap('map');
         $attached = Container::insertMapContainer($map, 'text', $text);
         self::assertInstanceOf(LoroText::class, $attached);
 
@@ -261,7 +261,7 @@ final class RichTextTest extends LoroTestCase
         Container::markText($text, 0, 3, 'bold', true);
 
         $doc = new LoroDoc();
-        $list = $doc->getList(Container::idLike('list'));
+        $list = $doc->getList('list');
         $attached = Container::insertListContainer($list, 0, $text);
         self::assertInstanceOf(LoroText::class, $attached);
 
@@ -274,10 +274,10 @@ final class RichTextTest extends LoroTestCase
     public function testAttachedTextCanBeCopiedWithoutSharingFutureEdits(): void
     {
         $doc = new LoroDoc();
-        $source = $doc->getText(Container::idLike('source'));
+        $source = $doc->getText('source');
         $source->insert(0, 'root');
 
-        $list = $doc->getList(Container::idLike('list'));
+        $list = $doc->getList('list');
         Container::insertListContainer($list, 0, $source);
         $copied = $list->get(0)?->asLoroText();
         self::assertInstanceOf(LoroText::class, $copied);
@@ -294,11 +294,11 @@ final class RichTextTest extends LoroTestCase
     public function testAttachedTextFromAnotherDocumentCannotBeInserted(): void
     {
         $docA = new LoroDoc();
-        $textA = $docA->getText(Container::idLike('text'));
+        $textA = $docA->getText('text');
         $textA->insert(0, 'cross');
 
         $docB = new LoroDoc();
-        $listB = $docB->getList(Container::idLike('list'));
+        $listB = $docB->getList('list');
 
         $this->expectException(\InvalidArgumentException::class);
         Container::insertListContainer($listB, 0, $textA);
@@ -307,7 +307,7 @@ final class RichTextTest extends LoroTestCase
     public function testApplyEmptyDeltaIsNoop(): void
     {
         $doc = new LoroDoc();
-        $text = $doc->getText(Container::idLike('text'));
+        $text = $doc->getText('text');
         $text->insert(0, 'hello');
 
         $text->applyDelta([]);

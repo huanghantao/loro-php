@@ -21,23 +21,23 @@ final class JsonEncodingTest extends LoroTestCase
         $doc = new LoroDoc();
         $doc->setPeerId(0);
 
-        $text = $doc->getText(Container::idLike('text'));
+        $text = $doc->getText('text');
         $text->insert(0, '123');
 
-        $map = $doc->getMap(Container::idLike('map'));
+        $map = $doc->getMap('map');
         $subMap = Container::insertMapContainer($map, 'subMap', new LoroMap());
         Container::insertMapValue($subMap, 'foo', 'bar');
 
-        $list = $doc->getList(Container::idLike('list'));
+        $list = $doc->getList('list');
         Container::pushListValue($list, 'foo');
         Container::pushListValue($list, 'bird');
 
-        $movableList = $doc->getMovableList(Container::idLike('movableList'));
+        $movableList = $doc->getMovableList('movableList');
         Container::pushListValue($movableList, 'move list');
         Container::pushListValue($movableList, 'bird');
         $movableList->mov(1, 0);
 
-        $tree = $doc->getTree(Container::idLike('tree'));
+        $tree = $doc->getTree('tree');
         $root = $tree->create(TreeParentId::root());
         $child = $tree->create(TreeParentId::node($root));
         Container::insertMapValue($tree->getMeta($child), 'tree', 'abc');
@@ -105,7 +105,7 @@ JSON;
     public function testExportJsonUpdatesUsesNullForNullValues(): void
     {
         $doc = new LoroDoc();
-        $map = $doc->getMap(Container::idLike('map'));
+        $map = $doc->getMap('map');
         Container::insertMapValue($map, 'key', null);
 
         $json = json_decode(
@@ -126,7 +126,7 @@ JSON;
         $doc = new LoroDoc();
         $doc->setPeerId(0);
 
-        $text = $doc->getText(Container::idLike('text'));
+        $text = $doc->getText('text');
         $text->insert(0, '123');
         $doc->commit();
         $text->delete(2, 1);
@@ -156,11 +156,11 @@ JSON;
     public function testNestedContainersConvertToPhpArrays(): void
     {
         $doc = new LoroDoc();
-        $map = $doc->getMap(Container::idLike('map'));
+        $map = $doc->getMap('map');
         $subMap = Container::insertMapContainer($map, 'subMap', new LoroMap());
         Container::insertMapValue($subMap, 'foo', 'bar');
 
-        $list = $doc->getList(Container::idLike('list'));
+        $list = $doc->getList('list');
         $subList = Container::insertListContainer($list, 0, new LoroList());
         Container::pushListValue($subList, 'item1');
         Container::pushListValue($subList, 'item2');

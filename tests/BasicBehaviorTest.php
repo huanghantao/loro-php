@@ -29,12 +29,12 @@ final class BasicBehaviorTest extends LoroTestCase
     public function testListMapTextAndMapSubcontainersFollowBasicExample(): void
     {
         $doc = new LoroDoc();
-        $list = $doc->getList(Container::idLike('list'));
+        $list = $doc->getList('list');
         Container::insertListValue($list, 0, 'A');
         Container::insertListValue($list, 1, 'B');
         Container::insertListValue($list, 2, 'C');
 
-        $map = $doc->getMap(Container::idLike('map'));
+        $map = $doc->getMap('map');
         Container::insertMapValue($map, 'key', 'value');
 
         self::assertEquals([
@@ -71,7 +71,7 @@ final class BasicBehaviorTest extends LoroTestCase
     public function testMapGetOrCreateContainerAndAccessors(): void
     {
         $doc = new LoroDoc();
-        $map = $doc->getMap(Container::idLike('map'));
+        $map = $doc->getMap('map');
 
         $list = Container::getOrCreateMapContainer($map, 'list', new LoroList());
         self::assertInstanceOf(LoroList::class, $list);
@@ -99,11 +99,33 @@ final class BasicBehaviorTest extends LoroTestCase
         self::assertContains('Hello', $values);
     }
 
+    public function testRootContainerIdsAcceptStringsDirectly(): void
+    {
+        $doc = new LoroDoc();
+
+        $text = $doc->getText('text');
+        $text->insert(0, 'hello');
+
+        $list = $doc->getList('list');
+        Container::pushListValue($list, 'item');
+
+        $map = $doc->getMap(ContainerId::root('map', ContainerType::map()));
+        Container::insertMapValue($map, 'ok', true);
+
+        self::assertSame('hello', self::textString($doc->tryGetText('text')));
+        self::assertSame(['item'], Value::toPhp($doc->tryGetList('list')->getDeepValue()));
+
+        $json = Loro::toJson($doc);
+        self::assertSame('hello', $json['text']);
+        self::assertSame(['item'], $json['list']);
+        self::assertSame(['ok' => true], $json['map']);
+    }
+
     public function testIncrementalSyncCanExportFromKnownVersion(): void
     {
         $docA = new LoroDoc();
         $docB = new LoroDoc();
-        $listA = $docA->getList(Container::idLike('list'));
+        $listA = $docA->getList('list');
         Container::insertListValue($listA, 0, 'A');
         Container::insertListValue($listA, 1, 'B');
         Container::insertListValue($listA, 2, 'C');
@@ -111,7 +133,7 @@ final class BasicBehaviorTest extends LoroTestCase
         $docB->import($docA->export(Export::updates(new VersionVector())));
         self::assertSame(['list' => ['A', 'B', 'C']], Loro::toJson($docB));
 
-        $listB = $docB->getList(Container::idLike('list'));
+        $listB = $docB->getList('list');
         $listB->delete(1, 1);
 
         $docA->import($docB->export(Export::updates($docA->oplogVv())));
@@ -123,7 +145,7 @@ final class BasicBehaviorTest extends LoroTestCase
     public function testListAccessorsAndTextPositionConversion(): void
     {
         $doc = new LoroDoc();
-        $list = $doc->getList(Container::idLike('list'));
+        $list = $doc->getList('list');
         Container::insertListValue($list, 0, 1);
         Container::insertListValue($list, 1, 2);
 
@@ -135,7 +157,7 @@ final class BasicBehaviorTest extends LoroTestCase
         self::assertTrue($value->isContainer());
         self::assertSame('Text', $value->containerType()?->variant);
 
-        $text = $doc->getText(Container::idLike('text'));
+        $text = $doc->getText('text');
         $text->insert(0, 'A😀BC');
 
         self::assertSame(0, $text->convertPos(0, PosType::unicode(), PosType::utf16()));
@@ -149,7 +171,7 @@ final class BasicBehaviorTest extends LoroTestCase
     public function testMapChildContainersLargeIntsAndDeletionState(): void
     {
         $doc = new LoroDoc();
-        $map = $doc->getMap(Container::idLike('map'));
+        $map = $doc->getMap('map');
 
         $list = Container::insertMapContainer($map, 'key', new LoroList());
         self::assertInstanceOf(LoroList::class, $list);
@@ -180,7 +202,7 @@ final class BasicBehaviorTest extends LoroTestCase
     {
         $doc = new LoroDoc();
         $doc->setPeerId(1);
-        $map = $doc->getMap(Container::idLike('map'));
+        $map = $doc->getMap('map');
         Container::insertMapValue($map, 'key', 1);
 
         self::assertSame(1, Value::toPhp($doc->getByStrPath('map/key')));
@@ -199,7 +221,7 @@ final class BasicBehaviorTest extends LoroTestCase
         $fork = $doc->fork();
         self::assertEquals(Loro::toJson($doc), Loro::toJson($fork));
 
-        Container::insertMapValue($fork->getMap(Container::idLike('map')), 'key', 2);
+        Container::insertMapValue($fork->getMap('map'), 'key', 2);
         self::assertSame(1, Loro::toJson($doc)['map']['key']);
         self::assertSame(2, Loro::toJson($fork)['map']['key']);
 
@@ -211,22 +233,22 @@ final class BasicBehaviorTest extends LoroTestCase
     {
         $a = new LoroDoc();
         $a->setPeerId(0);
-        $a->getText(Container::idLike('text'))->insert(0, 'a');
+        $a->getText('text')->insert(0, 'a');
 
         $b = new LoroDoc();
         $b->setPeerId(1);
         $b->import($a->export(Export::updates(new VersionVector())));
-        $b->getText(Container::idLike('text'))->insert(1, 'b');
+        $b->getText('text')->insert(1, 'b');
 
         $c = new LoroDoc();
         $c->setPeerId(2);
         $c->import($b->export(Export::updates(new VersionVector())));
-        $c->getText(Container::idLike('text'))->insert(2, 'c');
+        $c->getText('text')->insert(2, 'c');
 
         $status = $a->import($c->export(Export::updates($b->oplogVv())));
         self::assertSame([], self::spansToArrays($status->success));
         self::assertSame([2 => ['start' => 0, 'end' => 1]], self::spansToArrays($status->pending));
-        self::assertSame('a', self::textString($a->getText(Container::idLike('text'))));
+        self::assertSame('a', self::textString($a->getText('text')));
 
         $status2 = $a->import($b->export(Export::updates($a->oplogVv())));
         self::assertSame([
@@ -234,18 +256,18 @@ final class BasicBehaviorTest extends LoroTestCase
             2 => ['start' => 0, 'end' => 1],
         ], self::spansToArrays($status2->success));
         self::assertNull($status2->pending);
-        self::assertSame('abc', self::textString($a->getText(Container::idLike('text'))));
+        self::assertSame('abc', self::textString($a->getText('text')));
     }
 
     public function testImportBatchMergesPendingChunks(): void
     {
         $doc1 = new LoroDoc();
         $doc1->setPeerId(1);
-        $doc1->getText(Container::idLike('text'))->insert(0, 'Hello world!');
+        $doc1->getText('text')->insert(0, 'Hello world!');
 
         $doc2 = new LoroDoc();
         $doc2->setPeerId(2);
-        $doc2->getText(Container::idLike('text'))->insert(0, 'Hello world!');
+        $doc2->getText('text')->insert(0, 'Hello world!');
 
         $blob11 = $doc1->export(Export::updatesInRange([new IdSpan(1, new CounterSpan(0, 5))]));
         $blob12 = $doc1->export(Export::updatesInRange([new IdSpan(1, new CounterSpan(5, 7))]));
@@ -273,7 +295,7 @@ final class BasicBehaviorTest extends LoroTestCase
             2 => ['start' => 5, 'end' => 12],
         ], self::spansToArrays($status2->success));
         self::assertNull($status2->pending);
-        self::assertSame('Hello world!Hello world!', self::textString($newDoc->getText(Container::idLike('text'))));
+        self::assertSame('Hello world!Hello world!', self::textString($newDoc->getText('text')));
     }
 
     public function testCommitOptionsPendingLengthAndChangedContainers(): void
@@ -282,8 +304,8 @@ final class BasicBehaviorTest extends LoroTestCase
         $doc->setPeerId(0);
 
         self::assertSame(0, $doc->getPendingTxnLen());
-        $doc->getText(Container::idLike('text'))->insert(0, 'H');
-        Container::insertMapValue($doc->getMap(Container::idLike('map')), 'key', 'H');
+        $doc->getText('text')->insert(0, 'H');
+        Container::insertMapValue($doc->getMap('map'), 'key', 'H');
         self::assertSame(2, $doc->getPendingTxnLen());
 
         $doc->setNextCommitOptions(new CommitOptions('test origin', false, 123, 'test message'));
@@ -306,14 +328,14 @@ final class BasicBehaviorTest extends LoroTestCase
         $doc = new LoroDoc();
         $doc->setPeerId(1);
 
-        $text = $doc->getText(Container::idLike('text'));
+        $text = $doc->getText('text');
         $text->insert(0, 'Hello');
         $doc->commit();
 
-        $map = $doc->getMap(Container::idLike('map'));
+        $map = $doc->getMap('map');
         Container::insertMapValue($map, 'key1', 'value1');
         Container::insertMapValue($map, 'key2', 42);
-        $list = $doc->getList(Container::idLike('list'));
+        $list = $doc->getList('list');
         Container::pushListValue($list, 'item1');
         Container::pushListValue($list, 'item2');
         $list->delete(1, 1);
@@ -337,9 +359,9 @@ final class BasicBehaviorTest extends LoroTestCase
     public function testRootContainersCanBeDeletedAndHiddenWhenEmpty(): void
     {
         $doc = new LoroDoc();
-        $doc->getMap(Container::idLike('map'));
-        $doc->getMap(Container::idLike('m'));
-        $doc->getText(Container::idLike('text'));
+        $doc->getMap('map');
+        $doc->getMap('m');
+        $doc->getText('text');
 
         $doc->deleteRootContainer(Container::id('map', ContainerType::map()));
         $doc->deleteRootContainer(Container::id('text', ContainerType::text()));

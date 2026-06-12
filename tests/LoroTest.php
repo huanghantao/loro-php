@@ -30,7 +30,7 @@ final class LoroTest extends LoroTestCase
             $num++;
         });
 
-        $list = $doc->getList(Container::idLike('list'));
+        $list = $doc->getList('list');
         Container::insertListValue($list, 0, 123);
         $doc->commit();
         $sub->detach();
@@ -42,13 +42,13 @@ final class LoroTest extends LoroTestCase
     {
         $doc = new LoroDoc();
 
-        $list = $doc->getList(Container::idLike('list'));
+        $list = $doc->getList('list');
         Container::insertListValue($list, 0, null);
 
-        $map = $doc->getMap(Container::idLike('map'));
+        $map = $doc->getMap('map');
         Container::insertMapValue($map, 'key', null);
 
-        $movableList = $doc->getMovableList(Container::idLike('movableList'));
+        $movableList = $doc->getMovableList('movableList');
         Container::insertListValue($movableList, 0, null);
         Container::setMovableListValue($movableList, 0, null);
 
@@ -62,7 +62,7 @@ final class LoroTest extends LoroTestCase
     public function testText(): void
     {
         $doc = new LoroDoc();
-        $text = $doc->getText(Container::idLike('text'));
+        $text = $doc->getText('text');
         $text->insert(0, 'abc');
         $text->delete(0, 1);
 
@@ -72,7 +72,7 @@ final class LoroTest extends LoroTestCase
     public function testMovableList(): void
     {
         $doc = new LoroDoc();
-        $movableList = $doc->getMovableList(Container::idLike('movableList'));
+        $movableList = $doc->getMovableList('movableList');
 
         self::assertTrue($movableList->isAttached());
         self::assertFalse((new LoroMovableList())->isAttached());
@@ -81,7 +81,7 @@ final class LoroTest extends LoroTestCase
     public function testMap(): void
     {
         $doc = new LoroDoc();
-        $map = $doc->getMap(Container::idLike('map'));
+        $map = $doc->getMap('map');
 
         Container::getOrCreateMapContainer($map, 'list', new LoroList());
         Container::insertMapValue($map, 'key', 'value');
@@ -94,7 +94,7 @@ final class LoroTest extends LoroTestCase
         $doc = new LoroDoc();
         $doc->setPeerId(0);
 
-        $text = $doc->getText(Container::idLike('text'));
+        $text = $doc->getText('text');
         $text->insert(0, 'abc');
         $text->delete(0, 1);
         self::assertSame('bc', self::textString($text));
@@ -102,7 +102,7 @@ final class LoroTest extends LoroTestCase
         $doc2 = new LoroDoc();
         $doc2->setPeerId(1);
 
-        $text2 = $doc2->getText(Container::idLike('text'));
+        $text2 = $doc2->getText('text');
         $text2->insert(0, '123');
 
         $doc2->import($doc->export(Export::snapshot()));
@@ -117,7 +117,7 @@ final class LoroTest extends LoroTestCase
     public function testCheckout(): void
     {
         $doc = new LoroDoc();
-        $text = $doc->getText(Container::idLike('text'));
+        $text = $doc->getText('text');
         $text->insert(0, 'abc');
         $text->delete(0, 1);
 
@@ -138,7 +138,7 @@ final class LoroTest extends LoroTestCase
             $n++;
         });
 
-        $text = $doc->getText(Container::idLike('text'));
+        $text = $doc->getText('text');
         $text->insert(0, 'abc');
         $doc->commit();
         $text->delete(0, 1);
@@ -155,7 +155,7 @@ final class LoroTest extends LoroTestCase
     public function testApplyDelta(): void
     {
         $doc = new LoroDoc();
-        $text = $doc->getText(Container::idLike('text'));
+        $text = $doc->getText('text');
         $text->insert(0, 'abc');
         $text->applyDelta([
             TextDelta::delete(1),
@@ -170,7 +170,7 @@ final class LoroTest extends LoroTestCase
     {
         $emoji = "\u{1F600}";
         $doc = new LoroDoc();
-        $text = $doc->getText(Container::idLike('text'));
+        $text = $doc->getText('text');
         $text->insert(0, 'A' . $emoji . 'C');
 
         $utf16Pos = $text->convertPos(1, PosType::unicode(), PosType::utf16());
@@ -194,7 +194,7 @@ final class LoroTest extends LoroTestCase
         $remoteDoc = new LoroDoc();
 
         $localDoc->setPeerId(1);
-        $localMap = $localDoc->getMap(Container::idLike('properties'));
+        $localMap = $localDoc->getMap('properties');
         Container::insertMapValue($localMap, 'x', '42');
 
         $snapshot = $localDoc->exportSnapshot();
