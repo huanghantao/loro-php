@@ -3,7 +3,7 @@ set -euo pipefail
 
 THIS_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${THIS_SCRIPT_DIR}/.." && pwd)"
-RUST_CRATE_DIR="${ROOT_DIR}/loro-php"
+RUST_CRATE_DIR="${ROOT_DIR}/rust"
 TARGET_RELEASE_DIR="${RUST_CRATE_DIR}/target/release"
 PHP_BINDGEN_REPO="${PHP_BINDGEN_REPO:-https://github.com/huanghantao/uniffi-bindgen-php.git}"
 PHP_BINDGEN_REV="${PHP_BINDGEN_REV:-5139d5a7af3df86430e540753ca1bafd79959f84}"
@@ -43,7 +43,7 @@ if [[ -z "${LIB_PATH}" ]]; then
   exit 1
 fi
 
-mkdir -p "${ROOT_DIR}/gen-php" "${ROOT_DIR}/Sources/Loro"
+mkdir -p "${ROOT_DIR}/gen-php" "${ROOT_DIR}/src"
 
 echo "> Generate PHP bindings"
 (
@@ -59,5 +59,16 @@ GENERATED_FILE="${ROOT_DIR}/gen-php/LoroFFI.php"
 LC_ALL=C LANG=C perl -0pi -e "s/    private const LIBRARY = '[^']*';\n//" "${GENERATED_FILE}"
 LC_ALL=C LANG=C perl -0pi -e 's/self::LIBRARY/NativeLibrary::path()/g' "${GENERATED_FILE}"
 
-cp "${GENERATED_FILE}" "${ROOT_DIR}/Sources/Loro/LoroFFI.php"
-echo "> Wrote ${ROOT_DIR}/Sources/Loro/LoroFFI.php"
+cp "${GENERATED_FILE}" "${ROOT_DIR}/src/LoroFFI.php"
+echo "> Wrote ${ROOT_DIR}/src/LoroFFI.php"
+
+if [[ ! -x "${ROOT_DIR}/vendor/bin/php-cs-fixer" ]]; then
+  echo "PHP CS Fixer is not installed. Run composer install before building PHP bindings." >&2
+  exit 1
+fi
+
+echo "> Fix PHP coding style"
+(
+  cd "${ROOT_DIR}"
+  composer cs-fix
+)

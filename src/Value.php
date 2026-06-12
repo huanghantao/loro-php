@@ -1,13 +1,12 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Loro;
 
 final class ValueBox extends LoroValueLike
 {
-    public function __construct(private LoroValue $value)
-    {
-    }
+    public function __construct(private LoroValue $value) {}
 
     public function asLoroValue(): LoroValue
     {
@@ -17,9 +16,7 @@ final class ValueBox extends LoroValueLike
 
 final class BinaryValue
 {
-    public function __construct(public string $bytes)
-    {
-    }
+    public function __construct(public string $bytes) {}
 }
 
 final class Value

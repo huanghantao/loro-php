@@ -1,7 +1,9 @@
 /target/
-/loro-php/target/
+/rust/target/
 /gen-php/
 /native/
 /.tools/
+/.php-cs-fixer.cache
+/.phpunit.cache/
 /vendor/
 /composer.lock

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Loro;
@@ -51,7 +52,7 @@ final class NativeLibrary
      */
     private static function candidatePaths(): array
     {
-        $root = dirname(__DIR__, 2);
+        $root = dirname(__DIR__);
         $fileName = self::libraryFileName();
         $platform = self::platformName();
         $arch = self::architectureName();

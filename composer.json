@@ -5,23 +5,24 @@
   "license": "MIT",
   "autoload": {
     "files": [
-      "Sources/Loro/NativeLibrary.php",
-      "Sources/Loro/LoroFFI.php",
-      "Sources/Loro/Value.php",
-      "Sources/Loro/Container.php",
-      "Sources/Loro/Loro.php",
-      "Sources/Loro/Event.php",
-      "Sources/Loro/Ephemeral.php",
-      "Sources/Loro/Version.php"
+      "src/NativeLibrary.php",
+      "src/LoroFFI.php",
+      "src/Value.php",
+      "src/Container.php",
+      "src/Loro.php",
+      "src/Event.php",
+      "src/Ephemeral.php",
+      "src/Version.php"
     ]
   },
   "autoload-dev": {
     "psr-4": {
-      "Loro\\Tests\\": "Tests/LoroTests/"
+      "Loro\\Tests\\": "tests/"
     }
   },
   "scripts": {
     "build-ffi": "scripts/build_php_ffi.sh",
+    "cs-fix": "php-cs-fixer fix --sequential",
     "test": "@php -d ffi.enable=1 vendor/bin/phpunit"
   },
   "require": {
@@ -29,6 +30,7 @@
     "ext-ffi": "*"
   },
   "require-dev": {
-    "phpunit/phpunit": "^10.5"
+    "phpunit/phpunit": "^10.5",
+    "friendsofphp/php-cs-fixer": "^3"
   }
 }

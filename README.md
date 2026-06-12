@@ -5,7 +5,7 @@ CRDT library, built on the official
 [loro-ffi](https://github.com/loro-dev/loro-ffi) UniFFI component.
 
 The package contains generated PHP FFI bindings plus a small hand-written
-convenience layer under `Sources/Loro`.
+convenience layer under `src/`.
 
 ## Requirements
 
@@ -69,11 +69,13 @@ Install PHP dependencies:
 composer install
 ```
 
-Build the Rust wrapper library and regenerate `Sources/Loro/LoroFFI.php`:
+Build the Rust wrapper library and regenerate `src/LoroFFI.php`:
 
 ```bash
 ./scripts/build_php_ffi.sh
 ```
+
+The build script runs `composer cs-fix` after writing the generated PHP file.
 
 The build script uses remote sources by default:
 
@@ -95,7 +97,13 @@ PHP_BINDGEN_REV=<commit-sha> ./scripts/build_php_ffi.sh
 Run tests against the locally built native library:
 
 ```bash
-LORO_PHP_LIBRARY="$(pwd)/loro-php/target/release/libloro_php.dylib" composer test
+LORO_PHP_LIBRARY="$(pwd)/rust/target/release/libloro_php.dylib" composer test
+```
+
+Format PHP code:
+
+```bash
+composer cs-fix
 ```
 
 ## Release Packaging

@@ -1,13 +1,12 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Loro;
 
 final class RootContainerIdLike extends ContainerIdLike
 {
-    public function __construct(private string $name)
-    {
-    }
+    public function __construct(private string $name) {}
 
     public function asContainerId(ContainerType $ty): ContainerId
     {
@@ -17,9 +16,7 @@ final class RootContainerIdLike extends ContainerIdLike
 
 final class FixedContainerIdLike extends ContainerIdLike
 {
-    public function __construct(private ContainerId $id)
-    {
-    }
+    public function __construct(private ContainerId $id) {}
 
     public function asContainerId(ContainerType $ty): ContainerId
     {
