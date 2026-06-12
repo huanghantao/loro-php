@@ -109,9 +109,10 @@ composer cs-fix
 ## Release Packaging
 
 `native/` is intentionally ignored so compiled binaries do not have to live in
-Git. For Composer releases, build platform libraries in CI and either document
-`LORO_PHP_LIBRARY` for users who manage the binary themselves, or add an
-installer step that downloads the matching GitHub Release artifact into
+Git. Pushing a tag runs the release workflow, builds platform libraries, and
+uploads `loro-php-native-<platform>-<arch>.tar.gz` assets to the GitHub Release.
+Document `LORO_PHP_LIBRARY` for users who manage the binary themselves, or add
+an installer step that downloads the matching GitHub Release artifact into
 `native/<platform>-<arch>/`.
 
 Packagist installs the Composer source archive; it does not automatically
