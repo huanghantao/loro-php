@@ -63,16 +63,3 @@ composer install
 LORO_PHP_LIBRARY="$(pwd)/rust/target/release/libloro_php.dylib" composer test
 composer cs-fix
 ```
-
-## Release
-
-Tag a release and push it. The GitHub workflow builds native libraries and
-uploads `loro-php-native-<platform>.tar.gz` plus checksum files.
-
-```bash
-git tag -a v0.1.0 -m "Release v0.1.0"
-git push origin v0.1.0
-```
-
-Set `LORO_PHP_SKIP_NATIVE_INSTALL=1` to skip native download, or
-`LORO_PHP_NATIVE_RELEASE=<tag>` to force a native artifact tag.
