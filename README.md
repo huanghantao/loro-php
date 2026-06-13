@@ -1,227 +1,78 @@
 # loro-php
 
-Experimental PHP bindings for the [Loro](https://github.com/loro-dev/loro)
-CRDT library, built on the official
-[loro-ffi](https://github.com/loro-dev/loro-ffi) UniFFI component.
-
-The package contains generated PHP FFI bindings plus a small hand-written
-convenience layer under `src/`.
+PHP bindings for [Loro](https://github.com/loro-dev/loro), built with UniFFI
+and PHP FFI.
 
 ## Requirements
 
 - PHP 8.1+
 - `ext-ffi`
-- `ffi.enable=1` at runtime
-- A native `loro-php` dynamic library built for the current OS and CPU
-
-Rust is only required when building the native library or regenerating the PHP
-bindings.
+- `ffi.enable=1`
 
 ## Install
 
 ```bash
-composer require loro-dev/loro-php
+composer require huanghantao/loro-php
 ```
 
-This package does not commit native binaries to the repository. Provide the
-dynamic library with `LORO_PHP_LIBRARY`:
+Composer will ask whether `huanghantao/loro-php` may run as a plugin. Allow it
+to download the native library for your platform.
+
+For CI:
+
+```bash
+composer config allow-plugins.huanghantao/loro-php true
+composer require huanghantao/loro-php
+```
+
+To use your own native library instead:
 
 ```bash
 export LORO_PHP_LIBRARY=/absolute/path/to/libloro_php.dylib
 ```
 
-The expected library names are:
+## Usage
 
-- macOS: `libloro_php.dylib`
-- Linux: `libloro_php.so`
-- Windows: `loro_php.dll`
+```php
+<?php
 
-If a release workflow downloads native artifacts into the package, place them
-under `native/<platform>-<arch>/`, for example
-`native/darwin-arm64/libloro_php.dylib`. The loader also checks `native/`
-directly as a fallback.
+require __DIR__ . '/vendor/autoload.php';
 
-## Classic Examples
+use Loro\LoroDoc;
 
-Run examples with FFI enabled:
+$doc = new LoroDoc();
+$text = $doc->getText('text');
+
+$text->insert(0, 'Hello, Loro');
+$doc->commit();
+
+echo $text->slice(0, $text->lenUnicode());
+```
+
+Run PHP with FFI enabled:
 
 ```bash
 php -d ffi.enable=1 example.php
 ```
 
-### Edit text, maps, and lists
-
-```php
-<?php
-
-require __DIR__ . '/vendor/autoload.php';
-
-use Loro\LoroDoc;
-
-$doc = new LoroDoc();
-
-$text = $doc->getText('text');
-$text->insert(0, 'Hello');
-$text->insert(5, ', Loro');
-
-$profile = $doc->getMap('profile');
-$profile->set('name', 'Ada');
-$profile->set('online', true);
-
-$todos = $doc->getList('todos');
-$todos->push('write docs');
-$todos->push('ship release');
-
-$doc->commit();
-
-print_r($doc->toJSON());
-```
-
-### Sync two documents
-
-```php
-<?php
-
-require __DIR__ . '/vendor/autoload.php';
-
-use Loro\ExportMode;
-use Loro\LoroDoc;
-use Loro\VersionVector;
-
-$alice = new LoroDoc();
-$alice->setPeerId(1);
-$aliceText = $alice->getText('text');
-$aliceText->insert(0, 'Hello');
-$alice->commit();
-
-$bob = new LoroDoc();
-$bob->setPeerId(2);
-$bob->import($alice->export(ExportMode::updates(new VersionVector())));
-
-$bobText = $bob->getText('text');
-$bobText->insert($bobText->lenUnicode(), ' from Bob');
-$bob->commit();
-
-$alice->import($bob->export(ExportMode::updates($alice->oplogVv())));
-
-echo $aliceText->slice(0, $aliceText->lenUnicode()); // Hello from Bob
-```
-
-### Rich text marks
-
-```php
-<?php
-
-require __DIR__ . '/vendor/autoload.php';
-
-use Loro\LoroDoc;
-
-$doc = new LoroDoc();
-$doc->configTextStyle(['bold' => 'after']);
-
-$text = $doc->getText('text');
-$text->insert(0, 'Hello world');
-$text->mark(0, 5, 'bold', true);
-
-print_r($text->toDeltaJSON());
-```
-
-### Save and restore a snapshot
-
-```php
-<?php
-
-require __DIR__ . '/vendor/autoload.php';
-
-use Loro\ExportMode;
-use Loro\LoroDoc;
-
-$doc = new LoroDoc();
-$doc->getText('text')->insert(0, 'snapshot me');
-$doc->commit();
-
-$snapshot = $doc->export(ExportMode::snapshot());
-
-$restored = new LoroDoc();
-$restored->import($snapshot);
-
-print_r($restored->toJSON()); // ['text' => 'snapshot me']
-```
-
-### Share presence with Awareness
-
-```php
-<?php
-
-require __DIR__ . '/vendor/autoload.php';
-
-use Loro\Awareness;
-
-$alice = new Awareness(1, 30000);
-$alice->setLocalState([
-    'name' => 'Alice',
-    'cursor' => 5,
-]);
-
-$bob = new Awareness(2, 30000);
-$bob->apply($alice->encodeAll());
-
-print_r($bob->getState(1));
-```
-
-## Local Development
-
-Install PHP dependencies:
+## Development
 
 ```bash
 composer install
-```
-
-Build the Rust wrapper library and regenerate `src/LoroFFI.php`:
-
-```bash
 ./scripts/build_php_ffi.sh
-```
-
-The build script runs `composer cs-fix` after writing the generated PHP file.
-
-The build script uses remote sources by default:
-
-- `loro-ffi` from `https://github.com/loro-dev/loro-ffi.git`, tag `v1.13.0`
-- `uniffi-bindgen-php` from
-  `https://github.com/huanghantao/uniffi-bindgen-php.git`
-
-No sibling checkout is required. The bindgen binary is installed into the
-ignored `.tools/` directory.
-
-Useful overrides:
-
-```bash
-CARGO_TOOLCHAIN=+1.90.0 ./scripts/build_php_ffi.sh
-PHP_BINDGEN_BIN=/path/to/uniffi-bindgen-php ./scripts/build_php_ffi.sh
-PHP_BINDGEN_REV=<commit-sha> ./scripts/build_php_ffi.sh
-```
-
-Run tests against the locally built native library:
-
-```bash
 LORO_PHP_LIBRARY="$(pwd)/rust/target/release/libloro_php.dylib" composer test
-```
-
-Format PHP code:
-
-```bash
 composer cs-fix
 ```
 
-## Release Packaging
+## Release
 
-`native/` is intentionally ignored so compiled binaries do not have to live in
-Git. Pushing a tag runs the release workflow, builds platform libraries, and
-uploads `loro-php-native-<platform>-<arch>.tar.gz` assets to the GitHub Release.
-Document `LORO_PHP_LIBRARY` for users who manage the binary themselves, or add
-an installer step that downloads the matching GitHub Release artifact into
-`native/<platform>-<arch>/`.
+Tag a release and push it. The GitHub workflow builds native libraries and
+uploads `loro-php-native-<platform>.tar.gz` plus checksum files.
 
-Packagist installs the Composer source archive; it does not automatically
-include GitHub Release artifacts.
+```bash
+git tag -a v0.1.0 -m "Release v0.1.0"
+git push origin v0.1.0
+```
+
+Set `LORO_PHP_SKIP_NATIVE_INSTALL=1` to skip native download, or
+`LORO_PHP_NATIVE_RELEASE=<tag>` to force a native artifact tag.
