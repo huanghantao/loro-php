@@ -22,13 +22,13 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-24.04
+          - os: ubuntu-latest
             php: '8.1'
             library: libloro_php.so
-          - os: ubuntu-24.04
+          - os: ubuntu-latest
             php: '8.3'
             library: libloro_php.so
-          - os: macos-14
+          - os: macos-latest
             php: '8.3'
             library: libloro_php.dylib
 

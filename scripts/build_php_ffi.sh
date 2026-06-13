@@ -6,8 +6,8 @@ ROOT_DIR="$(cd "${THIS_SCRIPT_DIR}/.." && pwd)"
 RUST_CRATE_DIR="${ROOT_DIR}/rust"
 TARGET_RELEASE_DIR="${RUST_CRATE_DIR}/target/release"
 PHP_BINDGEN_REPO="${PHP_BINDGEN_REPO:-https://github.com/huanghantao/uniffi-bindgen-php.git}"
-PHP_BINDGEN_REV="${PHP_BINDGEN_REV:-853b933c843041fa5139766470c851876e339a9a}"
-PHP_BINDGEN_ROOT="${PHP_BINDGEN_ROOT:-${ROOT_DIR}/.tools/uniffi-bindgen-php/${PHP_BINDGEN_REV}}"
+PHP_BINDGEN_BRANCH="${PHP_BINDGEN_BRANCH:-main}"
+PHP_BINDGEN_ROOT="${PHP_BINDGEN_ROOT:-${ROOT_DIR}/.tools/uniffi-bindgen-php/${PHP_BINDGEN_BRANCH}}"
 PHP_BINDGEN_BIN="${PHP_BINDGEN_BIN:-${PHP_BINDGEN_ROOT}/bin/uniffi-bindgen-php}"
 CARGO_TOOLCHAIN="${CARGO_TOOLCHAIN:-+1.90.0}"
 
@@ -25,7 +25,7 @@ if [[ ! -x "${PHP_BINDGEN_BIN}" ]]; then
   echo "> Install uniffi-bindgen-php"
   "${cargo_cmd[@]}" install \
     --git "${PHP_BINDGEN_REPO}" \
-    --rev "${PHP_BINDGEN_REV}" \
+    --branch "${PHP_BINDGEN_BRANCH}" \
     --locked \
     --root "${PHP_BINDGEN_ROOT}" \
     uniffi-bindgen-php
